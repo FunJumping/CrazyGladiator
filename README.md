@@ -1,4 +1,3 @@
- [API文档访问地址]([sgas](https://cwt8898.github.io/FunJumping/CrazyGladiator/neo-cg-api-html/neo-cg-api.htm))
  #CrazyGladiator
 #### 一.  合约说明
 角斗士项目中总共使用三个合约：[sgas](https://github.com/NewEconoLab/neo-ns)，NFT和Auction，其中[sgas](https://github.com/NewEconoLab/neo-ns)合约为NEL开发的通用合约，NFT和Auction 为我们自己开发。
@@ -34,4 +33,5 @@ Auction合约管理角斗士的拍卖，出租，购买和手续费扣取。
 	C#合约中的结构体，不支持自定义构造函数，不支持在其中自定义成员函数。
 3. 其他常见错误：
 不要在智能合约中定义类变量，不支持；可以定义类常量。
-
+[API文档访问地址](https://github.com/NewEconoLab/neo-ns)
+ [API文档访问地址](https://cwt8898.github.io/FunJumping/CrazyGladiator/neo-cg-api-html/neo-cg-api.htm)
