@@ -1,5 +1,5 @@
  # CrazyGladiator
- [CrazyGladiator-API文档访问地址](https://funjumping.github.io/CrazyGladiator/neo-cg-api-html/neo-cg-api.htm)
+ [CrazyGladiator-API文档访问地址](https://funjumping.github.io/CrazyGladiator/neo-cg-api-html/neo-cg-api.html)
 #### 一.  合约说明
 角斗士项目中总共使用三个合约：[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)，NFT和Auction，其中[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)合约为NEL开发的通用合约，NFT和Auction 为我们自己开发。
 NFT合约管理角斗士资源，以及克隆操作；
