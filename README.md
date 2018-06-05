@@ -1,17 +1,18 @@
-# CrazyGladiator
-#### 合约说明
-角斗士项目中总共使用三个合约：sgas，NFT和Auction，其中Sgas合约为NEL开发的通用合约，NFT和Auction 为我们自己开发。
+ # CrazyGladiator
+ [CrazyGladiator-API文档访问地址](https://funjumping.github.io/CrazyGladiator/neo-cg-api-html/neo-cg-api.htm)
+#### 一.  合约说明
+角斗士项目中总共使用三个合约：[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)，NFT和Auction，其中[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)合约为NEL开发的通用合约，NFT和Auction 为我们自己开发。
 NFT合约管理角斗士资源，以及克隆操作；
 Auction合约管理角斗士的拍卖，出租，购买和手续费扣取。
 本项目所用合约均使用C#开发。
 1.	Sgas.cs
-作用：用于gas 和sgas之间1：1兑换。
-由于合约里直接操作gas比较困难，所以需要玩家先将gas通过sgas合约转换为NEP5资产，合约里操控的是sgas资产，这样合约写起来会比较方便。
+作用：用于gas 和[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)之间1：1兑换。
+由于合约里直接操作gas比较困难，所以需要玩家先将gas通过[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)合约转换为NEP5资产，合约里操控的是[sgas](https://github.com/NewEconoLab/neo-ns/tree/master/dapp_sgas)资产，这样合约写起来会比较方便。
 2.	NFT.cs
 作用：管理角斗士资源，以及克隆操作。
 3.	Auction.cs
 作用：管理角斗士的拍卖，出租，购买和手续费扣取。
-####	常见问题：
+#### 二.  常见问题：
 1.	如何获取我拥有的角斗士资产？
 这个应该是由tokensOfOwner接口提供的，但是如果要在链上统计获取这些数据，角斗士比较多的时候，这个接口的手续费肯定是要超过10GAS的，所以该接口暂不支持。
 现在我们的做法是在产生角斗士的时候，发出通知（ApplicationLog），后台监听到通知后，入后台数据库进行记录，在前端需要的时候由后台提供接口获取角斗士数据。
@@ -21,7 +22,7 @@ Auction合约管理角斗士的拍卖，出租，购买和手续费扣取。
 因为如果不提前充值到拍卖行，买东西的时候，合约没有办法主动扣除玩家的gas或者sgas。
 4. 关于结构体的序列化
 	2.7以后的版本支持使用Helper.Deserialize进行序列化，2.6的版本不支持该方法，目前测试网络的版本为2.6，主网的版本为2.7
-####	注意事项：
+#### 三.  注意事项：
 1. 关于手续费
 官方文档上说：“每个智能合约在每次执行过程中有10 GAS 的免费额度，无论是开发者部署还是用户调用，因此，单次执行费用在 10 GAS 以下的智能合约是不需要支付手续费的。当单次执行费用超过10 GAS，会减免10 GAS 的手续费。”。
 我们在写智能合约时，应该控制合约单个执行函数的复杂度，尽量将手续费控制在10GAS以内，这样系统减免后就可以免费调用。
@@ -33,3 +34,4 @@ Auction合约管理角斗士的拍卖，出租，购买和手续费扣取。
 	C#合约中的结构体，不支持自定义构造函数，不支持在其中自定义成员函数。
 3. 其他常见错误：
 不要在智能合约中定义类变量，不支持；可以定义类常量。
+
