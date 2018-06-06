@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset='utf-8' />
+	<title>角斗士接口测试</title>
+    <link rel="stylesheet" href="third/bootstrap/3.3.7/css/bootstrap.min.css">
+	
+	<script src="third/jquery/2.1.1/jquery.min.js" type="text/javascript"></script>
+	<script src="third/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+	
+    <script src="lib/rollup/aes.js"></script>
+    <script src="lib/component/aes.js"></script>
+    <script src="lib/component/mode-ecb.js"></script>
+    <script src="lib/component/pad-nopadding.js"></script>
+    <script src="lib/scrypt.js"></script>
+    <script src="lib/neo-ts.js"></script>
+	<script src="lib/code.js" type="text/javascript"></script>
+
+	<script src="core/dataUtil.js" type="text/javascript"></script>
+	<script src="core/Debug.js" type="text/javascript"></script>
+
+	<script src="sdk.js" type="text/javascript"></script>
+	<!-- <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script> -->
+	
+    <style>
+    </style>
+</head>
+<body>
+
+<div class="col-md-2" style="padding:0px;height:100%;">
+	<div id="output" class="form-control"
+	style="overflow-y:auto;width:100%;height:100%;height: 97vh;min-height:520px;padding:10px 10px 10px 30px;border:0;border-right:solid 1px #E5EBEE;border-bottom:solid 1px #eee;border-radius:0;resize: none; outline:none;font-size:14px;"></div>
+</div>
+
+<div id="control" class="col-md-5" style="overflow-y:auto;">
+
+	<p/>
+	<button id="btnSetSgas" class="btn btn-default">_setSgas</button>
+	sgasHash:<input id="sgasHash" value="0xe52a08c20986332ad8dccf9ded38cc493878064a" style="width:340px">
+	
+	<p/>
+	获取角斗士数量：
+	<button id="getGenGladitorCount" class="btn btn-default">getGenGladitorCount</button>
+	
+	<p/>
+	获取角斗士信息：
+	<button id="getGladitorByID" class="btn btn-default">getGladitorByID</button>
+	glaID:<input id="glaIDInput" value="1" style="width:50px">
+	
+	<p/>
+	获取角斗士的拥有者地址:
+	<button id="ownerOfByID" class="btn btn-default">ownerOfByID</button>
+	glaID:<input id="inputOwnerGla" value="1" style="width:50px">
+<!--
+	<p/>
+	发行促销角斗士：
+	<button id="btnMintToken" class="btn btn-default">MintToken</button>
+	owner:<input id="inputOwner" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:300px">
+	<p/>
+	geneData:<input id="tokenData" value="0x21212121212121212100000000000000000014000f040200130a1c011d512e3b" style="width:550px">
+	
+	<p/>
+	发行0代角斗士：
+	<button id="createGen0Auction" class="btn btn-default">createGen0Auction</button>
+	<p/>
+	geneData:<input id="gen0TokenData" value="0x21212121212121212100000000000000000014000f040200130a1c011d512e3b" style="width:550px">
+-->
+
+	<p/>
+	<button id="btnTransfer" class="btn btn-default">Transfer</button>
+	from:<input id="TransferFrom" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:300px">
+	to:<input id="TransferTo" value="ARXsmjmLK8EPZf2yrMU8ApuFpV7jMq6pWb" style="width:300px">
+	tokenId:<input id="TransferTokenId" value="1" style="width:150px">
+	<p/>
+
+	
+	<p/> <hr />
+	创建拍卖:
+	<button id="createSaleAuction" class="btn btn-default">createSaleAuction</button>
+	glaID:<input id="inputCreateSaleId" value="1" style="width:50px">
+	startPrice:<input id="inputCreateStartPrice" value="1" style="width:50px">
+	endPrice:<input id="inputCreateEndPrice" value="1" style="width:50px">
+	duration:<input id="inputCreateDuration" value="1" style="width:50px">
+	
+	<p/>
+	购买:
+	<button id="buyOnAuction" class="btn btn-default">buyOnAuction</button>
+	glaID:<input id="bidIDInput" value="1" style="width:50px">
+
+
+	<p/>
+	克隆拍卖创建:
+	<button id="createCloneAuction" class="btn btn-default">createCloneAuction</button>
+	glaID:<input id="inputCreateCloneSaleId" value="1" style="width:50px">
+	startPrice:<input id="inputCreateCloneStartPrice" value="1" style="width:50px">
+	endPrice:<input id="inputCreateCloneEndPrice" value="1" style="width:50px">
+	duration:<input id="inputCreateCloneDuration" value="1" style="width:50px">
+	
+	<p/>
+	购买克隆:
+	<button id="cloneOnAuction" class="btn btn-default">cloneOnAuction</button>
+	myGlaId:<input id="bidMyGlaId" value="1" style="width:50px">
+	glaID:<input id="bidCloneId" value="2" style="width:50px">
+
+	
+	<p/>
+	<button id="TokenURI" class="btn btn-default">TokenURI</button>
+	tokenId: <input id="TokenURITokenId" value="1" style="width:100px">
+	
+	<p/>
+	<button id="getAuctionById" class="btn btn-default">获取拍卖信息getAuction</button>
+	tokenId: <input id="getAuctionTokenId" value="1" style="width:100px">
+	
+	<p/>
+	<button id="btnGetAuctionAddr" class="btn btn-default">getAuctionAddr</button>
+	
+	<p/>
+	<button id="btnSetAuctionAddr" class="btn btn-default">setAuctionAddr</button>
+	addr:<input id="inputAuctionAddr" value="AN3Jt3pcCJY37hz2bYQji1g4y2TWwWMgE8" style="width:300px">
+	
+	<p/>
+	技能和装备配置: <button id="setAttrConfig" class="btn btn-default">setAttrConfig</button>
+	normalSkillIdMax:<input id="inputAttr1" value="21" style="width:50px">
+	rareSkillIdMax:<input id="inputAttr2" value="234" style="width:50px">
+	normalEquipIdMax:<input id="inputAttr3" value="31" style="width:50px">
+	rareEquipIdMax:<input id="inputAttr4" value="224" style="width:50px">
+
+	att0max:<input id="inputAttr0Max" value="10" style="width:50px">
+	att1max:<input id="inputAttr1Max" value="9" style="width:50px">
+	att2max:<input id="inputAttr2Max" value="3" style="width:50px">
+	att3max:<input id="inputAttr3Max" value="10" style="width:50px">
+	att4max:<input id="inputAttr4Max" value="10" style="width:50px">
+	att5max:<input id="inputAttr5Max" value="3" style="width:50px">
+	att6max:<input id="inputAttr6Max" value="9" style="width:50px">
+	att7max:<input id="inputAttr7Max" value="9" style="width:50px">
+	att8max:<input id="inputAttr8Max" value="9" style="width:50px">
+	<p/>
+	
+</div>
+<div id="control" class="col-md-5" style="overflow-y:auto;">
+
+	<p/>
+	<button id="btnBreedWithMy" class="btn btn-default">breedWithMy</button>
+	owner:<input id="breedWithMyOwner" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:400px">
+	motherId:<input id="breedWithMyMother" value="1" style="width:100px">
+	fatherId:<input id="breedWithMyFather" value="2" style="width:150px">
+	<p/>
+
+
+	<p/>
+	购买Nep代币: <button id="btnMintTokenNep" class="btn btn-default">MintTokenNep</button>
+	count:<input id="inputMintCount" value="1" style="width:90px">
+	<p/>
+	
+	<p/>
+	addr: <input id="inputBalanceOfAddr" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:300px">
+	<p/>
+	<button id="balanceOfNep" class="btn btn-default">balanceOfNep</button>
+	<p/>
+	
+	<p/>
+	from:<input id="transferNepFrom" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:300px">
+	to:<input id="transferNepTo" value="AN3Jt3pcCJY37hz2bYQji1g4y2TWwWMgE8" style="width:300px">
+	number:<input id="transferNepNumber" value="1" style="width:150px">
+	<p/>
+	<button id="btnTransferNep" class="btn btn-default">TransferNep</button>
+
+	<p/>
+	<button id="transferNepToAuc" class="btn btn-default">transferNepToAuc</button>
+
+
+	<p/>
+	owner:<input id="inputRechargeOwner" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:400px">
+	txid:<input id="inputTxid" value="a6d571b3b0423b9a3fd12586c28354c12fb2aadb4a11798aadb187757429de14" style="width:400px">
+	<p/>
+	<button id="btnRecharge" class="btn btn-default">recharge</button>
+
+	<p/>
+	owner:<input id="inputDrawOwner" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:400px">
+	count:<input id="inputDrawCount" value="" style="width:40px">
+	<p/>
+	<button id="btnDrawToken" class="btn btn-default">drawToken</button>
+
+
+
+	<p/>
+	owner:<input id="inputBlanceOwner" value="AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg" style="width:400px">
+	<p/>
+	<button id="btnBalanceOfAuc" class="btn btn-default">balanceOfAuc</button>
+
+	<p/>
+	<button id="btnIsReadyToBreed" class="btn btn-default">isReadyToBreed</button>
+	tokenId:<input id="inputBreedId" value="1" style="width:80px">
+	<p/>
+
+	<p/>
+	<button id="btnIsPregnant" class="btn btn-default">isPregnant</button>
+	tokenId:<input id="inputPregnantId" value="1" style="width:80px">
+	<p/>
+
+	
+	<p/>
+	<button id="giveBirth" class="btn btn-default">giveBirth</button>
+	tokenId:<input id="inputBirthId" value="1" style="width:60px">
+	<p/>
+	
+	<p/>
+	<button id="drawToContractOwner" class="btn btn-default">drawToContractOwner</button>
+	count:<input id="inputDrawToCount" value="1" style="width:60px">
+	<p/>
+
+	<p/>
+	<button id="totalSupplyAuct" class="btn btn-default">totalSupplyAuct</button>
+	<p/>
+
+</div>
+
+<script type="text/javascript" src="TxinfoProxy.js"></script>
+<script type="text/javascript" src="NeoLib.js"></script>
+<script type="text/javascript" src="TestApi.js"></script>
+
+<script>
+	
+</script>
+
+</body>
+</html>
