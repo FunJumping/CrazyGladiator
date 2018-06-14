@@ -21,7 +21,7 @@ namespace AuctionContract
         // tx recharge:  map<txid:byte[], count:BigInteger>
 
         // NFT合约hash
-        [Appcall("cb1558cf0225f633be03093df3e6c02b04b73bef")]
+        [Appcall("61e8cfa51aebdc5536f59b2ff66dc5b546254deb")]
         static extern object nftCall(string method, object[] arr);
 
         // SGAS合约hash
@@ -36,8 +36,9 @@ namespace AuctionContract
         public static readonly byte[] MintOwner = "AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg".ToScriptHash();
 
         // min fee for one transaction
-        private const ulong TX_MIN_FEE = 1000000;
-        private const ulong GEN0_STARTING_PRICE = 20000000;
+        private const ulong TX_MIN_FEE = 5000000;
+        private const ulong GEN0_MAX_PRICE = 1999000000;
+        private const ulong GEN0_MIN_PRICE = 199000000;
         private const ulong GEN0_AUCTION_DURATION = 86400;
 
         // In the auction 正在拍卖中的记录
@@ -53,17 +54,6 @@ namespace AuctionContract
             public BigInteger duration;
         }
 
-        // 拍卖成交记录
-        public class AuctionRecord
-        {
-            public BigInteger tokenId;
-            public byte[] seller;
-            public byte[] buyer;
-            public int sellType;
-            public BigInteger sellPrice;
-            public BigInteger sellTime;
-        }
-
         // 0代角斗士成交记录
         public class Gene0Record
         {
@@ -74,6 +64,17 @@ namespace AuctionContract
             public BigInteger lastPrice2;
             public BigInteger lastPrice3;
             public BigInteger lastPrice4;
+        }
+
+        // 拍卖成交记录
+        public class AuctionRecord
+        {
+            public BigInteger tokenId;
+            public byte[] seller;
+            public byte[] buyer;
+            public int sellType;
+            public BigInteger sellPrice;
+            public BigInteger sellTime;
         }
 
         //notify 上架拍卖通知
@@ -108,14 +109,14 @@ namespace AuctionContract
         {
             return "CrazyGladiatorAuction";
         }
-
         /**
-         * 不包含收取的手续费在内，所有用户存在拍卖行中的代币
-         */
-        public static BigInteger totalExchargeSgas()
+          * 版本
+          */
+        public static string Version()
         {
-            return Storage.Get(Storage.CurrentContext, "totalExchargeSgas").AsBigInteger();
+            return "1.0.2";
         }
+
 
         /**
          * 存储增加的代币数量
@@ -126,6 +127,14 @@ namespace AuctionContract
             total += count;
             Storage.Put(Storage.CurrentContext, "totalExchargeSgas", total);
         }
+        /**
+         * 不包含收取的手续费在内，所有用户存在拍卖行中的代币
+         */
+        public static BigInteger totalExchargeSgas()
+        {
+            return Storage.Get(Storage.CurrentContext, "totalExchargeSgas").AsBigInteger();
+        }
+
 
         /**
          * 存储减少的代币数总量
@@ -150,6 +159,8 @@ namespace AuctionContract
          */
         public static BigInteger balanceOf(byte[] address)
         {
+            //2018/6/5 cwt 修补漏洞
+            //byte[] keytaddress = new byte[] { 0x11 }.Concat(address);
             return Storage.Get(Storage.CurrentContext, address).AsBigInteger();
         }
 
@@ -158,6 +169,8 @@ namespace AuctionContract
          */
         public static bool hasAlreadyCharged(byte[] txid)
         {
+            //2018/6/5 cwt 修补漏洞
+            //byte[] keytxid = new byte[] { 0x11 }.Concat(txid);
             byte[] txinfo = Storage.Get(Storage.CurrentContext, txid);
             if (txinfo.Length > 0)
             {
@@ -177,6 +190,10 @@ namespace AuctionContract
                 Runtime.Log("Owner error.");
                 return false;
             }
+
+            //2018/6/5 cwt 修补漏洞
+            //byte[] keytxid = new byte[] { 0x11 }.Concat(txid);
+            //byte[] keytowner = new byte[] { 0x11 }.Concat(owner);
 
             byte[] txinfo = Storage.Get(Storage.CurrentContext, txid);
             if (txinfo.Length > 0)
@@ -234,6 +251,9 @@ namespace AuctionContract
                 Runtime.Log("Owner error.");
                 return false;
             }
+
+            //2018/6/5 cwt 修补漏洞
+            //byte[] keytsender = new byte[] { 0x11 }.Concat(sender);
 
             if (Runtime.CheckWitness(sender))
             {
@@ -395,11 +415,15 @@ namespace AuctionContract
                 byte[] owner = info.owner;
 
                 var nowtime = Blockchain.GetHeader(Blockchain.GetHeight()).Timestamp;
-                var secondPass = (nowtime - info.sellTime)/1000;
+                var secondPass = nowtime - info.sellTime;
+                //var secondPass = (nowtime - info.sellTime) / 1000;
+                //2018/6/5 cwt 修补漏洞
+                //byte[] keytsender = new byte[] { 0x11 }.Concat(sender);
+                // byte[] keytowner = new byte[] { 0x11 }.Concat(owner);
 
                 BigInteger senderMoney = Storage.Get(Storage.CurrentContext, sender).AsBigInteger();
                 BigInteger curBuyPrice = computeCurrentPrice(info.beginPrice, info.endPrice, info.duration, secondPass);
-                var fee = curBuyPrice * 30 / 1000;
+                var fee = curBuyPrice * 50 / 1000;
                 if (fee < TX_MIN_FEE)
                 {
                     fee = TX_MIN_FEE;
@@ -442,7 +466,6 @@ namespace AuctionContract
 
                 // 删除拍卖记录
                 Storage.Delete(Storage.CurrentContext, tokenId.AsByteArray());
-
                 // 成交记录
                 AuctionRecord record = new AuctionRecord();
                 record.tokenId = tokenId;
@@ -523,12 +546,17 @@ namespace AuctionContract
 
                 if(fatherInfo.sellType == 1)
                 {
+                    //2018/6/5 cwt 修补漏洞
+                    //byte[] keytsender = new byte[] { 0x11 }.Concat(sender);
+                    //byte[] keytowner = new byte[] { 0x11 }.Concat(owner);
+
                     var nowtime = Blockchain.GetHeader(Blockchain.GetHeight()).Timestamp;
-                    var secondPass = (nowtime - fatherInfo.sellTime) / 1000;
+                    var secondPass = nowtime - fatherInfo.sellTime;
+                    //var secondPass = (nowtime - fatherInfo.sellTime) / 1000;
 
                     BigInteger senderMoney = Storage.Get(Storage.CurrentContext, sender).AsBigInteger();
                     BigInteger curBuyPrice = computeCurrentPrice(fatherInfo.beginPrice, fatherInfo.endPrice, fatherInfo.duration, secondPass);
-                    var fee = curBuyPrice * 30 / 1000;
+                    var fee = curBuyPrice * 50 / 1000;
                     if (fee < TX_MIN_FEE)
                     {
                         fee = TX_MIN_FEE;
@@ -602,8 +630,11 @@ namespace AuctionContract
                 return false;
             }
 
+            //2018/6/5 cwt 修补漏洞
+            //byte[] keytsender = new byte[] { 0x11 }.Concat(sender);
+
             BigInteger senderOwnerMoney = Storage.Get(Storage.CurrentContext, sender).AsBigInteger();
-            var fee = 1000000; //TX_MIN_FEE
+            var fee = TX_MIN_FEE;
             if (senderOwnerMoney < fee)
             {
                 // the fee is not enough
@@ -651,8 +682,8 @@ namespace AuctionContract
                     bool res = (bool)nftCall("transfer_app", args);
                     if (res)
                     {
-                        Storage.Delete(Storage.CurrentContext, tokenId.AsByteArray());
-
+                        //Storage.Delete(Storage.CurrentContext, tokenId.AsByteArray());
+                        _delAuctionInfo(tokenId.AsByteArray());
                         // notify
                         CancelAuctioned(tokenOwner, tokenId);
                         return true;
@@ -700,12 +731,12 @@ namespace AuctionContract
                 }
 
                 BigInteger gen0Price = _computeNextGen0Price();
-                if(gen0Price < TX_MIN_FEE)
+                if(gen0Price < GEN0_MIN_PRICE)
                 {
-                    gen0Price = TX_MIN_FEE;
+                    gen0Price = GEN0_MIN_PRICE;
                 }
                 BigInteger beginPrice = gen0Price;
-                BigInteger endPrice = TX_MIN_FEE;
+                BigInteger endPrice = GEN0_MIN_PRICE;
                 BigInteger duration = GEN0_AUCTION_DURATION;
 
                 return _saleGen0(ContractOwner, tokenId, beginPrice, endPrice, duration, 0);
@@ -724,11 +755,16 @@ namespace AuctionContract
             BigInteger nextPrice = avePrice + (avePrice / 2);
 
             // We never auction for less than starting price
-            if (nextPrice < GEN0_STARTING_PRICE)
+            if (nextPrice < GEN0_MIN_PRICE)
             {
-                nextPrice = GEN0_STARTING_PRICE;
+                nextPrice = GEN0_MIN_PRICE;
             }
-
+            /*
+            if (nextPrice > GEN0_MAX_PRICE)
+            {
+                nextPrice = GEN0_MAX_PRICE;
+            }
+            */
             return nextPrice;
         }
 
@@ -838,6 +874,7 @@ namespace AuctionContract
 
                 //this is in nep5
                 if (method == "totalExchargeSgas") return totalExchargeSgas();
+                if (method == "version") return Version();
                 if (method == "name") return name();
                 if (method == "balanceOf")
                 {
@@ -1024,14 +1061,13 @@ namespace AuctionContract
             {
                 // Starting price can be higher than ending price (and often is!), so
                 // this delta can be negative.
-                var totalPriceChange = endingPrice - beginPrice;
+                //var totalPriceChange = endingPrice - beginPrice;
 
                 // This multiplication can't overflow, _secondsPassed will easily fit within
                 // 64-bits, and totalPriceChange will easily fit within 128-bits, their product
                 // will always fit within 256-bits.
-                var currentPriceChange = totalPriceChange * secondsPassed / duration;
-
-                var currentPrice = beginPrice + currentPriceChange;
+                //var currentPriceChange = totalPriceChange * secondsPassed / duration;
+                var currentPrice = beginPrice + (endingPrice - beginPrice) * secondsPassed / duration; 
                 return currentPrice;
             }
         }
@@ -1041,6 +1077,7 @@ namespace AuctionContract
          */
         private static object[] _getAuctionInfo(byte[] tokenId)
         {
+
             byte[] v = Storage.Get(Storage.CurrentContext, tokenId);
             if (v.Length == 0)
                 return new object[0];
@@ -1093,8 +1130,16 @@ namespace AuctionContract
             */
             // 新式实现方法只要一行
             byte[] auctionInfo = Helper.Serialize(info);
-
+    
             Storage.Put(Storage.CurrentContext, tokenId, auctionInfo);
+        }
+
+        /**
+         * 删除存储拍卖信息
+         */
+        private static void _delAuctionInfo(byte[] tokenId)
+        {
+            Storage.Delete(Storage.CurrentContext, tokenId);
         }
 
         /**

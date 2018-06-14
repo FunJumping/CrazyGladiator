@@ -112,8 +112,8 @@ namespace NFTContract
             public BigInteger normalEquipIdMax;
 
             // 稀有装备
-            public BigInteger rareEquipIdMin;
             public BigInteger rareEquipIdMax;
+            public BigInteger rareEquipIdMin;
 
             // 外观属性最大值
             public BigInteger atr1Max;
@@ -175,16 +175,14 @@ namespace NFTContract
         // 符号
         public static string Symbol() => "CGL";
 
-        // 存储发行总量的key
+        // 存储已发行的key
         private const string KEY_TOTAL = "totalSupply";
-
-        /**
-         * 已经发行的角斗士总数
-         */
-        public static BigInteger totalSupply()
-        {
-            return Storage.Get(Storage.CurrentContext, KEY_TOTAL).AsBigInteger();
-        }
+        // 发行总量的key
+        private const string KEY_ALL = "allSupply";
+        //发行总量
+        private const ulong ALL_SUPPLY_CG = 8640;
+        //版本
+        public static string Version() => "1.0.2";
 
         /**
          * 获取角斗士拥有者
@@ -202,6 +200,22 @@ namespace NFTContract
                 //return System.Text.Encoding.ASCII.GetBytes("token does not exist");
                 return new byte[] { };
             }
+        }
+
+        /**
+          * 已经发行的角斗士总数
+          */
+        public static BigInteger totalSupply()
+        {
+            return Storage.Get(Storage.CurrentContext, KEY_TOTAL).AsBigInteger();
+        }
+
+        /**
+          * 发行的角斗士总数
+          */
+        public static BigInteger allSupply()
+        {
+            return Storage.Get(Storage.CurrentContext, KEY_ALL).AsBigInteger();
         }
 
         /**
@@ -245,14 +259,19 @@ namespace NFTContract
                 // Owner error.
                 return 0;
             }
-
+           
+            //
             if (Runtime.CheckWitness(MintOwner))
             {
+                //判断下是否超过总量
+                byte[] tokenaId = Storage.Get(Storage.CurrentContext, KEY_ALL);
                 byte[] tokenId = Storage.Get(Storage.CurrentContext, KEY_TOTAL);
-
+                if (tokenId.AsBigInteger()>= tokenaId.AsBigInteger())
+                {
+                    return 0;
+                }
                 BigInteger newToken = tokenId.AsBigInteger() + 1;
                 tokenId = newToken.AsByteArray();
-
 
                 NFTInfo newInfo = new NFTInfo();
                 newInfo.owner = tokenOwner;
@@ -304,7 +323,6 @@ namespace NFTContract
                 newInfo.hair = hair;
 
                 _putNFTInfo(tokenId, newInfo);
-
                 //_addOwnerToken(tokenOwner, tokenId.AsBigInteger());
 
                 Storage.Put(Storage.CurrentContext, KEY_TOTAL, tokenId);
@@ -342,7 +360,6 @@ namespace NFTContract
             {
                 return false;
             }
-
             object[] objMotherInfo = _getNFTInfo(mother.AsByteArray());
             object[] objFatherInfo = _getNFTInfo(father.AsByteArray());
             NFTInfo motherInfo;
@@ -427,6 +444,8 @@ namespace NFTContract
                         return 0;
                     }
                     NFTInfo newInfo = (NFTInfo)(object)objInfo;
+                    newInfo.sireId = fatherId;
+                    newInfo.matronId = motherId;
 
                     byte[] tokenId = Storage.Get(Storage.CurrentContext, KEY_TOTAL);
                     BigInteger newToken = tokenId.AsBigInteger() + 1;
@@ -624,7 +643,516 @@ namespace NFTContract
         {
             // 为了增加游戏趣味性，基因混合的代码没有公开，需要自行根据游戏方案进行补全
             // 这里为了能顺利编译，返回了一个没有初始数据的对象
+            //NFTInfo newInfo = new NFTInfo();
+            //return (object[])(object)newInfo;
+            var nowtime = Blockchain.GetHeader(Blockchain.GetHeight()).Timestamp;
+
+            var generation = motherInfo.generation;
+            if (generation < fatherInfo.generation)
+            {
+                generation = fatherInfo.generation;
+            }
+            generation += 1;
+
+            // child
             NFTInfo newInfo = new NFTInfo();
+            newInfo.owner = motherInfo.owner;
+            newInfo.isGestating = 0;
+            newInfo.isReady = 0;
+            newInfo.cooldownIndex = motherInfo.cooldownIndex+1;
+
+            newInfo.nextActionAt = 0;
+            newInfo.cloneWithId = 0;
+            newInfo.birthTime = nowtime;
+            newInfo.matronId = 0;
+            newInfo.sireId = 0;
+            newInfo.generation = generation;
+
+            BigInteger rand = Blockchain.GetBlock(Blockchain.GetHeight()).ConsensusData;
+
+            // 基础属性默认35点
+            newInfo.strength = 35;
+            newInfo.power = 35;
+            newInfo.agile = 35;
+            newInfo.speed = 35;
+
+            rand = (randA * rand + randB) % randM;
+            newInfo.strength += (byte)((rand % 65) + 0); // 0~65
+
+            rand = (randA * rand + randB) % randM;
+            newInfo.power += (byte)((rand % 65) + 0); // 0~65
+
+            rand = (randA * rand + randB) % randM;
+            newInfo.agile += (byte)((rand % 65) + 0); // 0~65
+
+            rand = (randA * rand + randB) % randM;
+            newInfo.speed += (byte)((rand % 65) + 0); // 0~65
+
+            // AttrConfig
+            byte[] v = Storage.Get(Storage.CurrentContext, "attrConfig");
+            if (v.Length == 0)
+            {
+                return new object[0];
+            }
+
+            AttrConfig attrConfig = (AttrConfig)(object)Helper.Deserialize(v);
+
+            BigInteger skillNum = 0;
+            if (generation<=2)
+            {
+                skillNum = 3;
+            }
+            else if (generation <= 5)
+            {
+                skillNum = 4;
+            }
+            else // generation >= 6
+            {
+                skillNum = 5;
+            }
+
+            // 配置中普通技能的数量
+            BigInteger normalSkillNum = (attrConfig.normalSkillIdMax - attrConfig.normalSkillIdMin + 1);
+            BigInteger totalSkillNum = normalSkillNum  + (attrConfig.rareSkillIdMax - attrConfig.rareSkillIdMin + 1);
+
+            BigInteger[] extendsAttr = getExtendsAttr(motherInfo, fatherInfo, rand, attrConfig);
+            rand = extendsAttr[0];
+            // 继承的技能数量
+            BigInteger exSkillNum = extendsAttr[1];
+            // 继承的装备数量
+            BigInteger exEquipNum = extendsAttr[2];
+
+            BigInteger skillId;
+            if (exSkillNum >= 1)
+            {
+                newInfo.skill1 = (byte)extendsAttr[3];
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                if(rand%10<7) // 70%的概率
+                {
+                    // 普通技能
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % normalSkillNum);
+                    newInfo.skill1 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                }
+                else
+                {
+                    // 稀有技能
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % (attrConfig.rareSkillIdMax - attrConfig.rareSkillIdMin + 1));
+                    newInfo.skill1 = (byte)(skillId + attrConfig.rareSkillIdMin);
+                }
+
+                /*
+                rand = (randA * rand + randB) % randM;
+                skillId = (rand % totalSkillNum);
+                if (skillId < normalSkillNum)
+                {
+                    // 普通技能
+                    newInfo.skill1 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                }
+                else
+                {
+                    // 稀有技能
+                    newInfo.skill1 = (byte)(skillId - normalSkillNum + attrConfig.rareSkillIdMin);
+                }*/
+
+            }
+
+            if (exSkillNum >= 2)
+            {
+                newInfo.skill2 = (byte)extendsAttr[4];
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                if (rand % 10 < 7) // 70%的概率
+                {
+                    // 普通技能
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % normalSkillNum);
+                    newInfo.skill2 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                }
+                else
+                {
+                    // 稀有技能
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % (attrConfig.rareSkillIdMax - attrConfig.rareSkillIdMin + 1));
+                    newInfo.skill2 = (byte)(skillId + attrConfig.rareSkillIdMin);
+                }
+                /*
+                rand = (randA * rand + randB) % randM;
+                skillId = (rand % totalSkillNum);
+                if (skillId < normalSkillNum)
+                {
+                    // 普通技能
+                    newInfo.skill2 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                }
+                else
+                {
+                    // 稀有技能
+                    newInfo.skill2 = (byte)(skillId - normalSkillNum + attrConfig.rareSkillIdMin);
+                }
+                */
+            }
+
+            if (exSkillNum >= 3)
+            {
+                newInfo.skill3 = (byte)extendsAttr[5];
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                if (rand % 10 < 7) // 70%的概率
+                {
+                    // 普通技能
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % normalSkillNum);
+                    newInfo.skill3 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                }
+                else
+                {
+                    // 稀有技能
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % (attrConfig.rareSkillIdMax - attrConfig.rareSkillIdMin + 1));
+                    newInfo.skill3 = (byte)(skillId + attrConfig.rareSkillIdMin);
+                }
+                /*
+                rand = (randA * rand + randB) % randM;
+                skillId = (rand % totalSkillNum);
+                if (skillId < normalSkillNum)
+                {
+                    // 普通技能
+                    newInfo.skill3 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                }
+                else
+                {
+                    // 稀有技能
+                    newInfo.skill3 = (byte)(skillId - normalSkillNum + attrConfig.rareSkillIdMin);
+                }
+                */
+            }
+
+            if (skillNum >= 4)
+            {
+                if (exSkillNum >= 4)
+                {
+                    newInfo.skill4 = (byte)extendsAttr[6];
+                }
+                else
+                {
+                    rand = (randA * rand + randB) % randM;
+                    if (rand % 10 < 7) // 70%的概率
+                    {
+                        // 普通技能
+                        rand = (randA * rand + randB) % randM;
+                        skillId = (rand % normalSkillNum);
+                        newInfo.skill4 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                    }
+                    else
+                    {
+                        // 稀有技能
+                        rand = (randA * rand + randB) % randM;
+                        skillId = (rand % (attrConfig.rareSkillIdMax - attrConfig.rareSkillIdMin + 1));
+                        newInfo.skill4 = (byte)(skillId + attrConfig.rareSkillIdMin);
+                    }
+                    /*
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % totalSkillNum);
+                    if (skillId < normalSkillNum)
+                    {
+                        // 普通技能
+                        newInfo.skill4 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                    }
+                    else
+                    {
+                        // 稀有技能
+                        newInfo.skill4 = (byte)(skillId - normalSkillNum + attrConfig.rareSkillIdMin);
+                    }
+                    */
+                }
+            }
+
+            if (skillNum >= 5)
+            {
+                if (exSkillNum >= 5)
+                {
+                    newInfo.skill5 = (byte)extendsAttr[7];
+                }
+                else
+                {
+                    rand = (randA * rand + randB) % randM;
+                    if (rand % 10 < 7) // 70%的概率
+                    {
+                        // 普通技能
+                        rand = (randA * rand + randB) % randM;
+                        skillId = (rand % normalSkillNum);
+                        newInfo.skill5 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                    }
+                    else
+                    {
+                        // 稀有技能
+                        rand = (randA * rand + randB) % randM;
+                        skillId = (rand % (attrConfig.rareSkillIdMax - attrConfig.rareSkillIdMin + 1));
+                        newInfo.skill5 = (byte)(skillId + attrConfig.rareSkillIdMin);
+                    }
+                    /*
+                    rand = (randA * rand + randB) % randM;
+                    skillId = (rand % totalSkillNum);
+                    if (skillId < normalSkillNum)
+                    {
+                        // 普通技能
+                        newInfo.skill5 = (byte)(skillId + attrConfig.normalSkillIdMin);
+                    }
+                    else
+                    {
+                        // 稀有技能
+                        newInfo.skill5 = (byte)(skillId - normalSkillNum + attrConfig.rareSkillIdMin);
+                    }*/
+                }
+            }
+
+
+            BigInteger equipNum = 0;
+            if (generation <= 3)
+            {
+                equipNum = 2;
+            }
+            else if (generation <= 7)
+            {
+                equipNum = 3;
+            }
+            else // generation >= 8
+            {
+                equipNum = 4;
+            }
+
+            BigInteger normalEquipNum = (attrConfig.normalEquipIdMax - attrConfig.normalEquipIdMin + 1);
+            BigInteger totalEquipNum = normalEquipNum + (attrConfig.rareEquipIdMax - attrConfig.rareEquipIdMin + 1);
+
+            BigInteger equipId;
+            if (exEquipNum >= 1)
+            {
+                newInfo.equip1 = (byte)extendsAttr[(int)exSkillNum+3];
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                if (rand % 10 < 7) // 70%的概率
+                {
+                    // 普通
+                    rand = (randA * rand + randB) % randM;
+                    equipId = (rand % normalEquipNum);
+                    newInfo.equip1 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                }
+                else
+                {
+                    // 稀有
+                    rand = (randA * rand + randB) % randM;
+                    equipId = (rand % (attrConfig.rareEquipIdMax - attrConfig.rareEquipIdMin + 1));
+                    newInfo.equip1 = (byte)(equipId + attrConfig.rareEquipIdMin);
+                }
+                /*
+                rand = (randA * rand + randB) % randM;
+                equipId = rand % totalEquipNum;
+
+                if (equipId < normalEquipNum)
+                {
+                    // 普通
+                    newInfo.equip1 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                }
+                else
+                {
+                    // 稀有
+                    newInfo.equip1 = (byte)(equipId - normalEquipNum + attrConfig.rareEquipIdMin);
+                }
+                */
+            }
+
+            if (exEquipNum >= 2)
+            {
+                newInfo.equip2 = (byte)extendsAttr[(int)exSkillNum + 4];
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                if (rand % 10 < 7) // 70%的概率
+                {
+                    // 普通
+                    rand = (randA * rand + randB) % randM;
+                    equipId = (rand % normalEquipNum);
+                    newInfo.equip2 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                }
+                else
+                {
+                    // 稀有
+                    rand = (randA * rand + randB) % randM;
+                    equipId = (rand % (attrConfig.rareEquipIdMax - attrConfig.rareEquipIdMin + 1));
+                    newInfo.equip2 = (byte)(equipId + attrConfig.rareEquipIdMin);
+                }
+                /*
+                rand = (randA * rand + randB) % randM;
+                equipId = rand % totalEquipNum;
+
+                if (equipId < normalEquipNum)
+                {
+                    // 普通
+                    newInfo.equip2 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                }
+                else
+                {
+                    // 稀有
+                    newInfo.equip2 = (byte)(equipId - normalEquipNum + attrConfig.rareEquipIdMin);
+                }
+                */
+            }
+
+            if (equipNum >= 3)
+            {
+                if (exEquipNum >= 3)
+                {
+                    newInfo.equip3 = (byte)extendsAttr[(int)exSkillNum + 5];
+                }
+                else
+                {
+                    rand = (randA * rand + randB) % randM;
+                    if (rand % 10 < 7) // 70%的概率
+                    {
+                        // 普通
+                        rand = (randA * rand + randB) % randM;
+                        equipId = (rand % normalEquipNum);
+                        newInfo.equip3 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                    }
+                    else
+                    {
+                        // 稀有
+                        rand = (randA * rand + randB) % randM;
+                        equipId = (rand % (attrConfig.rareEquipIdMax - attrConfig.rareEquipIdMin + 1));
+                        newInfo.equip3 = (byte)(equipId + attrConfig.rareEquipIdMin);
+                    }
+                    /*
+                    rand = (randA * rand + randB) % randM;
+                    equipId = rand % totalEquipNum;
+
+                    if (equipId < normalEquipNum)
+                    {
+                        // 普通
+                        newInfo.equip3 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                    }
+                    else
+                    {
+                        // 稀有
+                        newInfo.equip3 = (byte)(equipId - normalEquipNum + attrConfig.rareEquipIdMin);
+                    }
+                    */
+                }
+            }
+
+            if (equipNum >= 4)
+            {
+                if (exEquipNum >= 4)
+                {
+                    newInfo.equip4 = (byte)extendsAttr[(int)exSkillNum + 6];
+                }
+                else
+                {
+                    rand = (randA * rand + randB) % randM;
+                    if (rand % 10 < 7) // 70%的概率
+                    {
+                        // 普通
+                        rand = (randA * rand + randB) % randM;
+                        equipId = (rand % normalEquipNum);
+                        newInfo.equip4 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                    }
+                    else
+                    {
+                        // 稀有
+                        rand = (randA * rand + randB) % randM;
+                        equipId = (rand % (attrConfig.rareEquipIdMax - attrConfig.rareEquipIdMin + 1));
+                        newInfo.equip4 = (byte)(equipId + attrConfig.rareEquipIdMin);
+                    }
+                    /*
+                    rand = (randA * rand + randB) % randM;
+                    equipId = rand % totalEquipNum;
+
+                    if (equipId < normalEquipNum)
+                    {
+                        // 普通
+                        newInfo.equip4 = (byte)(equipId + attrConfig.normalEquipIdMin);
+                    }
+                    else
+                    {
+                        // 稀有
+                        newInfo.equip4 = (byte)(equipId - normalEquipNum + attrConfig.rareEquipIdMin);
+                    }
+                    */
+                }
+            }
+
+            // restrictAttribute
+            if (motherInfo.restrictAttribute == fatherInfo.restrictAttribute)
+            {
+                newInfo.restrictAttribute = motherInfo.restrictAttribute;
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                equipId = rand % totalEquipNum;
+
+                if (equipId == 0)
+                {
+                    newInfo.restrictAttribute = motherInfo.restrictAttribute;
+                }
+                else
+                {
+                    newInfo.restrictAttribute = fatherInfo.restrictAttribute;
+                }
+            }
+
+            // character
+            if (motherInfo.character == fatherInfo.character)
+            {
+                newInfo.character = motherInfo.character;
+            }
+            else
+            {
+                rand = (randA * rand + randB) % randM;
+                equipId = rand % totalEquipNum;
+
+                if (equipId == 0)
+                {
+                    newInfo.character = motherInfo.character;
+                }
+                else
+                {
+                    newInfo.character = fatherInfo.character;
+                }
+            }
+
+            newInfo.part1 = (byte)(newInfo.strength % attrConfig.atr1Max + 1);
+            newInfo.part2 = (byte)(newInfo.agile % attrConfig.atr2Max + 1);
+            newInfo.part3 = (byte)(newInfo.speed % attrConfig.atr3Max + 1);
+            newInfo.part4 = (byte)(newInfo.strength % attrConfig.atr4Max + 1);
+            newInfo.part5 = (byte)(newInfo.strength % attrConfig.atr5Max + 1);
+            newInfo.appear1 = (byte)(newInfo.speed % attrConfig.atr6Max + 1);
+            newInfo.appear2 = (byte)(newInfo.agile % attrConfig.atr7Max + 1);
+            newInfo.appear3 = (byte)(newInfo.power % attrConfig.atr8Max + 1);
+            newInfo.appear4 = (byte)(newInfo.power % attrConfig.atr9Max + 1);
+
+            rand = (randA * rand + randB) % randM;
+            newInfo.appear5 = (byte)(rand % 10 + 1);
+
+            newInfo.chest = motherInfo.chest;
+            newInfo.bracer = motherInfo.bracer;
+            newInfo.shoulder = motherInfo.shoulder;
+            newInfo.face = motherInfo.face;
+            newInfo.lip = motherInfo.lip;
+            newInfo.nose = motherInfo.nose;
+            newInfo.eyes = motherInfo.eyes;
+            newInfo.hair = motherInfo.hair;
+
             return (object[])(object)newInfo;
         }
 
@@ -846,6 +1374,14 @@ namespace NFTContract
         }
 
         /**
+         * 获取总发行量
+         */
+        public static byte[] getAllSupply()
+        {
+            return Storage.Get(Storage.CurrentContext, "auction");
+        }
+
+        /**
          * 获取拍卖行地址
          */
         public static byte[] getAuctionAddr()
@@ -854,13 +1390,14 @@ namespace NFTContract
         }
 
         /**
-         * 设置拍卖行地址
+         * 设置拍卖行地址（这里增加一个添加角斗士发行总量的操作）
          */
         public static bool setAuctionAddr(byte[] auctionAddr)
         {
             if (Runtime.CheckWitness(ContractOwner))
             {
                 Storage.Put(Storage.CurrentContext, "auction", auctionAddr);
+                Storage.Put(Storage.CurrentContext, KEY_ALL, ALL_SUPPLY_CG);
                 return true;
             }
             return false;
@@ -977,7 +1514,7 @@ namespace NFTContract
             {
                 //必须在入口函数取得callscript，调用脚本的函数，也会导致执行栈变化，再取callscript就晚了
                 var callscript = ExecutionEngine.CallingScriptHash;
-
+                if (operation == "version") return Version();
                 if (operation == "name") return Name();
                 if (operation == "symbol") return Symbol();
                 if (operation == "decimals") return 0; // NFT can't divide, decimals allways zero
@@ -1244,6 +1781,11 @@ namespace NFTContract
                     return getAuctionAddr();
                 }
 
+                if (operation == "getAllSupply")
+                {
+                    return getAllSupply();
+                }
+
                 if (operation == "isPregnant")
                 {
                     if (args.Length != 1) return 0;
@@ -1422,6 +1964,7 @@ namespace NFTContract
          */
         private static object[] _getNFTInfo(byte[] tokenId)
         {
+
             byte[] v = Storage.Get(Storage.CurrentContext, tokenId);
             if (v.Length == 0)
                 return new object[0];
@@ -1574,7 +2117,9 @@ namespace NFTContract
             //新式实现方法只要一行
             byte[] txinfo = Helper.Serialize(info);
 
-            var txid = (ExecutionEngine.ScriptContainer as Transaction).Hash;
+            byte[] txid = (ExecutionEngine.ScriptContainer as Transaction).Hash;
+            //2018/6/5 cwt 修补漏洞
+            //byte[] keytxid = new byte[] { 0x11 }.Concat(txid);
             Storage.Put(Storage.CurrentContext, txid, txinfo);
         }
 
