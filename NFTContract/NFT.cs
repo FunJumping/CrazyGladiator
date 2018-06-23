@@ -182,7 +182,7 @@ namespace NFTContract
         //发行总量
         private const ulong ALL_SUPPLY_CG = 8640;
         //版本
-        public static string Version() => "1.0.2";
+        public static string Version() => "1.0.9";
 
         /**
          * 获取角斗士拥有者
@@ -645,7 +645,8 @@ namespace NFTContract
             // 这里为了能顺利编译，返回了一个没有初始数据的对象
             NFTInfo newInfo = new NFTInfo();
             return (object[])(object)newInfo;
-            
+        
+        
         }
 
         /**
@@ -1001,6 +1002,10 @@ namespace NFTContract
                     byte[] signature = operation.AsByteArray();
                     return VerifySignature(signature, ContractOwner);
                 }
+            }
+            else if (Runtime.Trigger == TriggerType.VerificationR)
+            {
+                return true;
             }
             else if (Runtime.Trigger == TriggerType.Application)
             {

@@ -21,7 +21,7 @@ namespace AuctionContract
         // tx recharge:  map<txid:byte[], count:BigInteger>
 
         // NFT合约hash
-        [Appcall("61e8cfa51aebdc5536f59b2ff66dc5b546254deb")]
+        [Appcall("0a0d1750fda41a3438fc64c9f50440cc654c1801")]
         static extern object nftCall(string method, object[] arr);
 
         // SGAS合约hash
@@ -114,7 +114,7 @@ namespace AuctionContract
           */
         public static string Version()
         {
-            return "1.0.2";
+            return "1.0.9";
         }
 
 
@@ -750,43 +750,34 @@ namespace AuctionContract
          */
         private static BigInteger _computeNextGen0Price()
         {
-            BigInteger avePrice = averageGen0SalePrice();
-
-            BigInteger nextPrice = avePrice + (avePrice / 2);
-
-            // We never auction for less than starting price
-            if (nextPrice < GEN0_MIN_PRICE)
-            {
-                nextPrice = GEN0_MIN_PRICE;
-            }
-            /*
-            if (nextPrice > GEN0_MAX_PRICE)
-            {
-                nextPrice = GEN0_MAX_PRICE;
-            }
-            */
-            return nextPrice;
-        }
-
-        /**
-         * 计算0代角斗士的平均售价
-         */
-        private static BigInteger averageGen0SalePrice()
-        {
-            Gene0Record gene0Record;
+            BigInteger nextPrice = GEN0_MAX_PRICE;
+            
             byte[] v = (byte[])Storage.Get(Storage.CurrentContext, "gene0Record");
             if (v.Length == 0)
             {
-                return 0;
+                nextPrice = GEN0_MAX_PRICE;
             }
             else
             {
+                Gene0Record gene0Record;
                 object[] infoRec = (object[])Helper.Deserialize(v);
                 gene0Record = (Gene0Record)(object)infoRec;
+                BigInteger sum = gene0Record.lastPrice0 + gene0Record.lastPrice1 + gene0Record.lastPrice2 + gene0Record.lastPrice3 + gene0Record.lastPrice4;
+                if (gene0Record.totalSellCount < 5)
+                {
+                    nextPrice = GEN0_MAX_PRICE;
+                }
+                else
+                {
+                    nextPrice =(sum / 5) * 3 / 2;
+                    if (nextPrice < GEN0_MIN_PRICE)
+                    {
+                        nextPrice = GEN0_MIN_PRICE;
+                    }
+                }
             }
 
-            BigInteger sum = gene0Record.lastPrice0 + gene0Record.lastPrice1 + gene0Record.lastPrice2 + gene0Record.lastPrice3 + gene0Record.lastPrice4;
-            return sum / 5;
+            return nextPrice;
         }
 
         /**
@@ -846,6 +837,10 @@ namespace AuctionContract
                     byte[] signature = method.AsByteArray();
                     return VerifySignature(signature, ContractOwner);
                 }
+            }
+            else if (Runtime.Trigger == TriggerType.VerificationR)
+            {
+                return true;
             }
             else if (Runtime.Trigger == TriggerType.Application)
             {
