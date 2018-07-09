@@ -125,7 +125,7 @@ namespace NFTContract
             public BigInteger atr7Max;
             public BigInteger atr8Max;
             public BigInteger atr9Max;
-
+            //
         }
 
         /**
@@ -180,9 +180,9 @@ namespace NFTContract
         // 发行总量的key
         private const string KEY_ALL = "allSupply";
         //发行总量
-        private const ulong ALL_SUPPLY_CG = 8640;
+        private const ulong ALL_SUPPLY_CG = 4320;
         //版本
-        public static string Version() => "1.0.9";
+        public static string Version() => "1.0.16";
 
         /**
          * 获取角斗士拥有者
@@ -370,8 +370,7 @@ namespace NFTContract
 
                 if (owner.AsBigInteger() == sender.AsBigInteger())
                 {
-                    _breedWith(mother, father);
-                    return true;
+                    _breedWith(mother, father);                 
                 }
             }
             return false;
@@ -396,14 +395,16 @@ namespace NFTContract
             motherInfo.isGestating = 1;
             motherInfo.cloneWithId = father;
             motherInfo.nextActionAt = nowtime + coolTime;
-            motherInfo.cooldownIndex += 1;
+            //先注释掉,改成在角斗士出生的时候再计算
+            //motherInfo.cooldownIndex += 1;
 
             _putNFTInfo(mother.AsByteArray(), motherInfo);
 
             //
             coolTime = _getCoolTime(fatherInfo.cooldownIndex);
             fatherInfo.nextActionAt = nowtime + coolTime;
-            fatherInfo.cooldownIndex += 1;
+            //先注释掉,改成在角斗士出生的时候再计算
+            //fatherInfo.cooldownIndex += 1;
 
             _putNFTInfo(father.AsByteArray(), fatherInfo);
 
@@ -461,10 +462,21 @@ namespace NFTContract
                     motherInfo.cloneWithId = 0;
                     motherInfo.nextActionAt = 0;
                     motherInfo.isGestating = 0;
+                    //判断克隆CD是否升级
+                    BigInteger isUp = motherInfo.cooldownIndex % 2;
+                    if (isUp==0&&motherInfo.cooldownIndex>0)
+                    {
+                        motherInfo.cooldownIndex += 1;
+                    }
                     _putNFTInfo(motherId.AsByteArray(), motherInfo);
 
-                    //
                     fatherInfo.nextActionAt = 0;
+                    //判断克隆CD是否升级
+                    isUp = motherInfo.cooldownIndex % 2;
+                    if (isUp == 0 && fatherInfo.cooldownIndex > 0)
+                    {
+                        fatherInfo.cooldownIndex += 1;
+                    }
                     _putNFTInfo(fatherId.AsByteArray(), fatherInfo);
 
                     // notify
@@ -645,8 +657,7 @@ namespace NFTContract
             // 这里为了能顺利编译，返回了一个没有初始数据的对象
             NFTInfo newInfo = new NFTInfo();
             return (object[])(object)newInfo;
-        
-        
+            
         }
 
         /**
@@ -724,11 +735,7 @@ namespace NFTContract
          */
         public static bool transfer(byte[] from, byte[] to, BigInteger tokenId)
         {
-            if (from.Length != 20)
-            {
-                return false;
-            }
-            if (to.Length != 20)
+            if (from.Length != 20|| to.Length != 20)
             {
                 return false;
             }
@@ -994,7 +1001,8 @@ namespace NFTContract
                 if (ContractOwner.Length == 20)
                 {
                     // if param ContractOwner is script hash
-                    return Runtime.CheckWitness(ContractOwner);
+                    //return Runtime.CheckWitness(ContractOwner);
+                    return false;
                 }
                 else if (ContractOwner.Length == 33)
                 {
@@ -1385,7 +1393,44 @@ namespace NFTContract
 
                     return allowance(tokenId);
                 }
+                if (operation == "upgrade")//合约的升级就是在合约中要添加这段代码来实现
+                {
+                    //不是管理员 不能操作
+                    if (!Runtime.CheckWitness(ContractOwner))
+                        return false;
 
+                    if (args.Length != 1 && args.Length != 9)
+                        return false;
+
+                    byte[] script = Blockchain.GetContract(ExecutionEngine.ExecutingScriptHash).Script;
+                    byte[] new_script = (byte[])args[0];
+                    //如果传入的脚本一样 不继续操作
+                    if (script == new_script)
+                        return false;
+
+                    byte[] parameter_list = new byte[] { 0x07, 0x10 };
+                    byte return_type = 0x05;
+                    bool need_storage = (bool)(object)05;
+                    string name = "NFT";
+                    string version = "1.1";
+                    string author = "CG";
+                    string email = "0";
+                    string description = "test";
+
+                    if (args.Length == 9)
+                    {
+                        parameter_list = (byte[])args[1];
+                        return_type = (byte)args[2];
+                        need_storage = (bool)args[3];
+                        name = (string)args[4];
+                        version = (string)args[5];
+                        author = (string)args[6];
+                        email = (string)args[7];
+                        description = (string)args[8];
+                    }
+                    Contract.Migrate(new_script, parameter_list, return_type, need_storage, name, version, author, email, description);
+                    return true;
+                }
                 //if (operation == "tokenByIndex")
                 //{
                 //    BigInteger index = (BigInteger)args[0];
@@ -1442,13 +1487,13 @@ namespace NFTContract
          */
         private static BigInteger _getCoolTime(BigInteger coolIndex)
         {
-            BigInteger[] coolData = new BigInteger[14] {
-                1, 2, 5, 10, 30, 60,
-                2 *60, 4*60, 8*60, 16*60, 24*60,
-                2*1440, 4*1440, 7*1440};
-            if(coolIndex>13)
+            BigInteger[] coolData = new BigInteger[19] {
+                1, 10, 30, 60, 120, 240,
+                489, 960, 1440, 2160, 3130,
+                4380, 5900, 7670,9600,11500,13300,14600,15300};
+            if(coolIndex>18)
             {
-                coolIndex = 13;
+                coolIndex = 18;
             }
 
             BigInteger coolTime = coolData[(int)coolIndex];
@@ -1615,8 +1660,7 @@ namespace NFTContract
             byte[] txinfo = Helper.Serialize(info);
 
             byte[] txid = (ExecutionEngine.ScriptContainer as Transaction).Hash;
-            //2018/6/5 cwt 修补漏洞
-            //byte[] keytxid = new byte[] { 0x11 }.Concat(txid);
+
             Storage.Put(Storage.CurrentContext, txid, txinfo);
         }
 
