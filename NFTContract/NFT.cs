@@ -166,9 +166,9 @@ namespace NFTContract
         public static event deleGladiatorCloned GladiatorCloned;
 
         // 合约拥有者，超级管理员
-        public static readonly byte[] ContractOwner = "AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg".ToScriptHash();
+        public static readonly byte[] ContractOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
         // 有权限发布0代角斗士的钱包地址
-        public static readonly byte[] MintOwner = "AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg".ToScriptHash();
+        public static readonly byte[] MintOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
 
         // 名称
         public static string Name() => "CrazyGladiator";
@@ -182,7 +182,36 @@ namespace NFTContract
         //发行总量
         private const ulong ALL_SUPPLY_CG = 4320;
         //版本
-        public static string Version() => "1.0.16";
+        public static string Version() => "1.0.22";
+
+        /**
+         * 查询克隆申请是否执行成功
+         */
+        public static bool isCloneApplySucc(BigInteger tokenId)
+        {
+            bool res = false;
+            object[] objMotherInfo = _getNFTInfo(tokenId.AsByteArray());
+            
+            NFTInfo motherInfo;
+            NFTInfo fatherInfo;
+            if (objMotherInfo.Length > 0)
+            {
+                motherInfo = (NFTInfo)(object)objMotherInfo;
+                if (motherInfo.cloneWithId>0)
+                {
+                    object[] objFatherInfo = _getNFTInfo(motherInfo.cloneWithId.AsByteArray());
+                    if (objFatherInfo.Length > 0)
+                    {
+                        fatherInfo = (NFTInfo)(object)objFatherInfo;
+                        if (motherInfo.nextActionAt>0&& motherInfo.isGestating==1 && fatherInfo.nextActionAt>0)
+                        {
+                            res = true;
+                        }
+                    }
+                }
+            }
+            return res;
+        }
 
         /**
          * 获取角斗士拥有者
@@ -370,7 +399,7 @@ namespace NFTContract
 
                 if (owner.AsBigInteger() == sender.AsBigInteger())
                 {
-                    _breedWith(mother, father);                 
+                   return _breedWith(mother, father);                 
                 }
             }
             return false;
@@ -390,8 +419,14 @@ namespace NFTContract
 
             motherInfo = (NFTInfo)(object)objMotherInfo;
             fatherInfo = (NFTInfo)(object)objFatherInfo;
-
-            BigInteger coolTime = _getCoolTime(motherInfo.cooldownIndex);
+            //判断最长CD时间
+            BigInteger cooldownIndex = motherInfo.cooldownIndex;
+            if (cooldownIndex< fatherInfo.cooldownIndex)
+            {
+                cooldownIndex = fatherInfo.cooldownIndex;
+            }
+            //
+            BigInteger coolTime = _getCoolTime(cooldownIndex);
             motherInfo.isGestating = 1;
             motherInfo.cloneWithId = father;
             motherInfo.nextActionAt = nowtime + coolTime;
@@ -462,21 +497,11 @@ namespace NFTContract
                     motherInfo.cloneWithId = 0;
                     motherInfo.nextActionAt = 0;
                     motherInfo.isGestating = 0;
-                    //判断克隆CD是否升级
-                    BigInteger isUp = motherInfo.cooldownIndex % 2;
-                    if (isUp==0&&motherInfo.cooldownIndex>0)
-                    {
-                        motherInfo.cooldownIndex += 1;
-                    }
+                    motherInfo.cooldownIndex += 1;
                     _putNFTInfo(motherId.AsByteArray(), motherInfo);
-
-                    fatherInfo.nextActionAt = 0;
-                    //判断克隆CD是否升级
-                    isUp = motherInfo.cooldownIndex % 2;
-                    if (isUp == 0 && fatherInfo.cooldownIndex > 0)
-                    {
-                        fatherInfo.cooldownIndex += 1;
-                    }
+                    //
+                    fatherInfo.nextActionAt = 0;                
+                    fatherInfo.cooldownIndex += 1;
                     _putNFTInfo(fatherId.AsByteArray(), fatherInfo);
 
                     // notify
@@ -657,7 +682,7 @@ namespace NFTContract
             // 这里为了能顺利编译，返回了一个没有初始数据的对象
             NFTInfo newInfo = new NFTInfo();
             return (object[])(object)newInfo;
-            
+           
         }
 
         /**
@@ -673,6 +698,7 @@ namespace NFTContract
                 {
                     return false;
                 }
+                //
 
                 var nowtime = Blockchain.GetHeader(Blockchain.GetHeight()).Timestamp;
                 if(nftInfo.nextActionAt > 0 && nowtime >= nftInfo.nextActionAt)
@@ -1247,7 +1273,13 @@ namespace NFTContract
                     byte[] txid = (byte[])args[0];
                     return getTXInfo(txid);
                 }
-
+                if (operation == "isCloneApplySucc")
+                {
+                    if (args.Length != 1)
+                        return 0;
+                    BigInteger tokenId = (BigInteger)args[0];
+                    return isCloneApplySucc(tokenId);
+                }
                 if (operation == "isReadyToBreed")
                 {
                     if (args.Length != 1) return 0;

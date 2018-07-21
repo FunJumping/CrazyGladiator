@@ -21,7 +21,7 @@ namespace AuctionContract
         // tx recharge:  map<txid:byte[], count:BigInteger>
 
         // NFT合约hash
-        [Appcall("fc7e3a74d81aee2267b99d2405eaa0b1b2f2af04")]
+        [Appcall("57c819391fab1d794a8146566a55c3b114a3369f")]
         static extern object nftCall(string method, object[] arr);
 
         // SGAS合约hash
@@ -30,10 +30,10 @@ namespace AuctionContract
         delegate object deleDyncall(string method, object[] arr);
 
         // the owner, super admin address
-        public static readonly byte[] ContractOwner = "AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg".ToScriptHash();
+        public static readonly byte[] ContractOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
 
         // 有权限发行0代合约的钱包地址
-        public static readonly byte[] MintOwner = "AcKA1A3TRx6ubNzi3Dz2QFW6V9uEkeVasg".ToScriptHash();
+        public static readonly byte[] MintOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
 
         // min fee for one transaction
         private const ulong TX_MIN_FEE = 5000000;
@@ -114,7 +114,7 @@ namespace AuctionContract
           */
         public static string Version()
         {
-            return "1.0.16";
+            return "1.0.22";
         }
 
 
@@ -223,7 +223,7 @@ namespace AuctionContract
                         Storage.Put(Storage.CurrentContext, keytxid, value);
 
                         BigInteger nMoney = 0;
-                        byte[] ownerMoney = Storage.Get(Storage.CurrentContext, owner);
+                        byte[] ownerMoney = Storage.Get(Storage.CurrentContext, keytowner);
                         if (ownerMoney.Length > 0)
                         {
                             nMoney = ownerMoney.AsBigInteger();
