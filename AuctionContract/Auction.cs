@@ -21,7 +21,7 @@ namespace AuctionContract
         // tx recharge:  map<txid:byte[], count:BigInteger>
 
         // NFT合约hash
-        [Appcall("57c819391fab1d794a8146566a55c3b114a3369f")]
+        [Appcall("f0ffe16cc33fe018b221b1286989ffba6de32ae9")]
         static extern object nftCall(string method, object[] arr);
 
         // SGAS合约hash
@@ -38,7 +38,7 @@ namespace AuctionContract
         // min fee for one transaction
         private const ulong TX_MIN_FEE = 5000000;
         private const ulong GEN0_MAX_PRICE = 1999000000;
-        private const ulong GEN0_MIN_PRICE = 199000000;
+        private const ulong GEN0_MIN_PRICE = 9000000;
         private const ulong GEN0_AUCTION_DURATION = 86400;
 
         // In the auction 正在拍卖中的记录
@@ -75,6 +75,17 @@ namespace AuctionContract
             public int sellType;
             public BigInteger sellPrice;
             public BigInteger sellTime;
+        }
+
+
+        /**
+          * 0代角斗士价格区间数据
+          */
+        public class GenoPrice
+        {
+            public BigInteger max_price;
+            public BigInteger min_price;
+            public BigInteger duration;
         }
 
         //notify 上架拍卖通知
@@ -114,7 +125,7 @@ namespace AuctionContract
           */
         public static string Version()
         {
-            return "1.0.22";
+            return "1.0.23";
         }
 
 
@@ -476,7 +487,7 @@ namespace AuctionContract
                 record.sellPrice = curBuyPrice;
                 record.sellTime = nowtime;
 
-                _putAuctionRecord(tokenId.AsByteArray(), record);*/
+                _putAuctionRecord(tokenId.AsByteArray(), record);
 
                 if(owner == ContractOwner)
                 {
@@ -518,7 +529,7 @@ namespace AuctionContract
                     //
                     byte[] infoRec2 = Helper.Serialize(gene0Record);
                     Storage.Put(Storage.CurrentContext, "gene0Record", infoRec2);
-                }
+                }*/
 
                 // notify
                 AuctionBuy(sender, tokenId, curBuyPrice, fee, nowtime);
@@ -731,15 +742,22 @@ namespace AuctionContract
                     return false;
                 }
 
-                BigInteger gen0Price = _computeNextGen0Price();
+                /*BigInteger gen0Price = _computeNextGen0Price();
                 if(gen0Price < GEN0_MIN_PRICE)
                 {
                     gen0Price = GEN0_MIN_PRICE;
-                }
-                BigInteger beginPrice = gen0Price;
+                }*/
+                BigInteger beginPrice = GEN0_MAX_PRICE;
                 BigInteger endPrice = GEN0_MIN_PRICE;
                 BigInteger duration = GEN0_AUCTION_DURATION;
-
+                object[] gpInfo = getGenoPrice();
+                if (gpInfo.Length > 0)
+                {
+                    GenoPrice gp = (GenoPrice)(object)gpInfo;
+                    beginPrice = gp.max_price;
+                    endPrice = gp.min_price;
+                    duration = gp.duration;
+                }
                 return _saleGen0(ContractOwner, tokenId, beginPrice, endPrice, duration, 0);
             }
             return false;
@@ -859,6 +877,26 @@ namespace AuctionContract
                     return cloneOnAuction(sender, motherGlaId, fatherGlaId);
                 }
 
+                if (method == "setGenoPrice")
+                {
+                    if (Runtime.CheckWitness(ContractOwner))
+                    {
+                        BigInteger maxPrice = (BigInteger)args[0];
+                        BigInteger minPrice = (BigInteger)args[1];
+                        BigInteger duration = (BigInteger)args[2];
+                        GenoPrice gp = new GenoPrice();
+                        gp.max_price = maxPrice;
+                        gp.min_price = minPrice;
+                        gp.duration = duration;
+                        return _putGenoPrice(gp);
+                    }
+                    return false;
+                }
+                if (method == "getGenoPrice")
+                {
+                    return getGenoPrice();
+                }
+
                 if (method == "_setSgas")
                 {
                     if (Runtime.CheckWitness(ContractOwner))
@@ -940,6 +978,7 @@ namespace AuctionContract
                     BigInteger startPrice = (BigInteger)args[2];
                     BigInteger endPrice = (BigInteger)args[3];
                     BigInteger duration = (BigInteger)args[4];
+                    
 
                     return createSaleAuction(tokenOwner, tokenId, startPrice, endPrice, duration);
                 }
@@ -1238,6 +1277,37 @@ namespace AuctionContract
 
             var key = "buy".AsByteArray().Concat(tokenId);
             Storage.Put(Storage.CurrentContext, key, txInfo);
+        }
+
+        /**
+         * 存储0代角斗士价格范围
+         */
+        private static bool _putGenoPrice( GenoPrice info)
+        {
+            //做一个最小值判断，防止设置设置过小
+            if (info.min_price<GEN0_MIN_PRICE)
+            {
+                info.max_price = GEN0_MAX_PRICE;
+                info.min_price = GEN0_MIN_PRICE;
+                info.duration = GEN0_AUCTION_DURATION;
+            }
+            byte[] gps = Helper.Serialize(info);
+            Storage.Put(Storage.CurrentContext, "geno_p", gps);
+            return true;
+        }
+
+        /**
+         * 获取0代角斗士价格范围
+         */
+        public static object[] getGenoPrice()
+        {
+            byte[] v = Storage.Get(Storage.CurrentContext, "geno_p");
+            if (v.Length == 0)
+            {
+                return new object[0];
+            }
+            //新式实现方法只要一行
+            return (object[])Helper.Deserialize(v);
         }
 
         //private static byte[] _ByteLen(BigInteger n)
