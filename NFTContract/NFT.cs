@@ -182,7 +182,7 @@ namespace NFTContract
         //发行总量
         private const ulong ALL_SUPPLY_CG = 4320;
         //版本
-        public static string Version() => "1.0.22";
+        public static string Version() => "1.0.23";
 
         /**
          * 查询克隆申请是否执行成功
@@ -682,7 +682,7 @@ namespace NFTContract
             // 这里为了能顺利编译，返回了一个没有初始数据的对象
             NFTInfo newInfo = new NFTInfo();
             return (object[])(object)newInfo;
-           
+            
         }
 
         /**
