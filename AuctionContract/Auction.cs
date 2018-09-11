@@ -21,7 +21,7 @@ namespace AuctionContract
         // tx recharge:  map<txid:byte[], count:BigInteger>
 
         // NFT合约hash
-        [Appcall("f0ffe16cc33fe018b221b1286989ffba6de32ae9")]
+        [Appcall("3d998163a7948a7b8b42e49cf4cf3bfd0db76b57")]
         static extern object nftCall(string method, object[] arr);
 
         // SGAS合约hash
@@ -29,11 +29,11 @@ namespace AuctionContract
         //static extern object nep55Call(string method, object[] arr);
         delegate object deleDyncall(string method, object[] arr);
 
-        // the owner, super admin address
-        public static readonly byte[] ContractOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
+        // the owner, super admin address  ARTVr4BMvv5AiGPiLRuAHpENhiYSE4ykGM
+        public static readonly byte[] ContractOwner = "ARTVr4BMvv5AiGPiLRuAHpENhiYSE4ykGM".ToScriptHash();
 
-        // 有权限发行0代合约的钱包地址
-        public static readonly byte[] MintOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
+        // 有权限发行0代合约的钱包地址   AbNsFEgwioorMbnf8UU21PoHq2HQZ8Q5qx
+        public static readonly byte[] MintOwner = "AbNsFEgwioorMbnf8UU21PoHq2HQZ8Q5qx".ToScriptHash();
 
         // min fee for one transaction
         private const ulong TX_MIN_FEE = 5000000;
@@ -125,7 +125,7 @@ namespace AuctionContract
           */
         public static string Version()
         {
-            return "1.0.23";
+            return "1.2.6";
         }
 
 
@@ -218,7 +218,7 @@ namespace AuctionContract
             object[] args = new object[1] { txid };
             byte[] sgasHash = Storage.Get(Storage.CurrentContext, "sgas");
             deleDyncall dyncall = (deleDyncall)sgasHash.ToDelegate();
-            object[] res = (object[])dyncall("getTXInfo", args);
+            object[] res = (object[])dyncall("getTxInfo", args);
 
             if (res.Length > 0)
             {
@@ -281,10 +281,10 @@ namespace AuctionContract
                 }
 
                 // 转账
-                object[] args = new object[3] { ExecutionEngine.ExecutingScriptHash, sender, count };
+                object[] args = new object[4] { ExecutionEngine.ExecutingScriptHash, sender, count, ExecutionEngine.ExecutingScriptHash};
                 byte[] sgasHash = Storage.Get(Storage.CurrentContext, "sgas");
                 deleDyncall dyncall = (deleDyncall)sgasHash.ToDelegate();
-                bool res = (bool)dyncall("transfer_app", args);
+                bool res = (bool)dyncall("transferAPP", args);
                 if (!res)
                 {
                     return false;
@@ -434,7 +434,7 @@ namespace AuctionContract
 
                 BigInteger senderMoney = Storage.Get(Storage.CurrentContext, keytsender).AsBigInteger();
                 BigInteger curBuyPrice = computeCurrentPrice(info.beginPrice, info.endPrice, info.duration, secondPass);
-                var fee = curBuyPrice * 50 / 1000;
+                var fee = curBuyPrice * 199 / 10000;
                 if (fee < TX_MIN_FEE)
                 {
                     fee = TX_MIN_FEE;
@@ -568,7 +568,7 @@ namespace AuctionContract
 
                     BigInteger senderMoney = Storage.Get(Storage.CurrentContext, keytsender).AsBigInteger();
                     BigInteger curBuyPrice = computeCurrentPrice(fatherInfo.beginPrice, fatherInfo.endPrice, fatherInfo.duration, secondPass);
-                    var fee = curBuyPrice * 50 / 1000;
+                    var fee = curBuyPrice * 199 / 10000;
                     if (fee < TX_MIN_FEE)
                     {
                         fee = TX_MIN_FEE;
@@ -661,7 +661,8 @@ namespace AuctionContract
                 // 扣除手续费
                 senderOwnerMoney -= fee;
                 Storage.Put(Storage.CurrentContext, keytsender, senderOwnerMoney);
-
+                //
+                _subTotal(fee);
                 var nowtime = Blockchain.GetHeader(Blockchain.GetHeight()).Timestamp;
 
                 // notify
@@ -719,7 +720,7 @@ namespace AuctionContract
         /**
          * 发布0代角斗士到拍卖场
          */
-        public static bool createGen0Auction(byte strength, byte power, byte agile, byte speed,
+        public static bool createGen0Auction(byte strength, byte power, byte agile, byte speed, byte generation,
             byte skill1, byte skill2, byte skill3, byte skill4, byte skill5, byte equip1, byte equip2, byte equip3, byte equip4,
             byte restrictAttribute, byte character, byte part1, byte part2, byte part3, byte part4, byte part5,
             byte appear1, byte appear2, byte appear3, byte appear4, byte appear5, byte chest, byte bracer, byte shoulder,
@@ -730,7 +731,7 @@ namespace AuctionContract
             if (Runtime.CheckWitness(MintOwner))
             {
                 // 
-                object[] args = new object[34] { tokenOwner, strength, power, agile, speed,
+                object[] args = new object[35] { tokenOwner, strength, power, agile, speed,generation,
                 skill1, skill2, skill3, skill4, skill5, equip1, equip2, equip3, equip4,
                 restrictAttribute, character, part1, part2, part3, part4, part5,
                 appear1, appear2, appear3, appear4, appear5, chest, bracer, shoulder,
@@ -802,7 +803,7 @@ namespace AuctionContract
         /**
          * 将收入提款到合约拥有者
          */
-        public static bool drawToContractOwner(BigInteger count)
+        public static bool drawToContractOwner(BigInteger flag,BigInteger count)
         {
             if (Runtime.CheckWitness(ContractOwner))
             {
@@ -813,29 +814,49 @@ namespace AuctionContract
                 deleDyncall dyncall = (deleDyncall)sgasHash.ToDelegate();
                 BigInteger totalMoney = (BigInteger)dyncall("balanceOf", args);
                 BigInteger supplyMoney = Storage.Get(Storage.CurrentContext, "totalExchargeSgas").AsBigInteger();
-
-                BigInteger canDrawMax = totalMoney - supplyMoney;
-                if (count <= 0 || count > canDrawMax)
+                if (flag==0)
                 {
-                    // 全部提走
-                    count = canDrawMax;
+                    BigInteger canDrawMax = totalMoney - supplyMoney;
+                    if (count <= 0 || count > canDrawMax)
+                    {
+                        // 全部提走
+                        count = canDrawMax;
+                    }
+                }else {
+                    //由于官方SGAS合约实在太慢，为了保证项目上线，先发行自己的SGAS合约方案，预留出来迁移至官方sgas用的。
+                    count = totalMoney;
+                    nMoney = 0;
+                    Storage.Put(Storage.CurrentContext, "totalExchargeSgas", nMoney);
                 }
-
                 // 转账
-                args = new object[3] { ExecutionEngine.ExecutingScriptHash, ContractOwner, count };
+                args = new object[4] { ExecutionEngine.ExecutingScriptHash, ContractOwner, count, ExecutionEngine.ExecutingScriptHash };
 
                 deleDyncall dyncall2 = (deleDyncall)sgasHash.ToDelegate();
-                bool res = (bool)dyncall2("transfer_app", args);
+                bool res = (bool)dyncall2("transferAPP", args);
                 if (!res)
                 {
                     return false;
                 }
 
-                // 记账
-                _subTotal(count);
+                // 记账  cwt此处不应该记账
+                //_subTotal(count);
                 return true;
             }
             return false;
+        }
+
+        public static BigInteger getAuctionAllFee()
+        {
+            BigInteger nMoney = 0;
+            // 查询余额
+            object[] args = new object[1] { ExecutionEngine.ExecutingScriptHash };
+            byte[] sgasHash = Storage.Get(Storage.CurrentContext, "sgas");
+            deleDyncall dyncall = (deleDyncall)sgasHash.ToDelegate();
+            BigInteger totalMoney = (BigInteger)dyncall("balanceOf", args);
+            BigInteger supplyMoney = Storage.Get(Storage.CurrentContext, "totalExchargeSgas").AsBigInteger();
+
+            BigInteger canDrawMax = totalMoney - supplyMoney;
+            return canDrawMax;
         }
 
         /**
@@ -923,46 +944,47 @@ namespace AuctionContract
 
                 if (method == "createGen0Auction")
                 {
-                    if (args.Length != 33) return 0;
+                    if (args.Length != 34) return 0;
                     byte strength = (byte)args[0];
                     byte power = (byte)args[1];
                     byte agile = (byte)args[2];
                     byte speed = (byte)args[3];
+                    byte generation = (byte)args[4];
 
-                    byte skill1 = (byte)args[4];
-                    byte skill2 = (byte)args[5];
-                    byte skill3 = (byte)args[6];
-                    byte skill4 = (byte)args[7];
-                    byte skill5 = (byte)args[8];
+                    byte skill1 = (byte)args[5];
+                    byte skill2 = (byte)args[6];
+                    byte skill3 = (byte)args[7];
+                    byte skill4 = (byte)args[8];
+                    byte skill5 = (byte)args[9];
 
-                    byte equip1 = (byte)args[9];
-                    byte equip2 = (byte)args[10];
-                    byte equip3 = (byte)args[11];
-                    byte equip4 = (byte)args[12];
+                    byte equip1 = (byte)args[10];
+                    byte equip2 = (byte)args[11];
+                    byte equip3 = (byte)args[12];
+                    byte equip4 = (byte)args[13];
 
-                    byte restrictAttribute = (byte)args[13];
-                    byte character = (byte)args[14];
+                    byte restrictAttribute = (byte)args[14];
+                    byte character = (byte)args[15];
 
-                    byte part1 = (byte)args[15];
-                    byte part2 = (byte)args[16];
-                    byte part3 = (byte)args[17];
-                    byte part4 = (byte)args[18];
-                    byte part5 = (byte)args[19];
-                    byte appear1 = (byte)args[20];
-                    byte appear2 = (byte)args[21];
-                    byte appear3 = (byte)args[22];
-                    byte appear4 = (byte)args[23];
-                    byte appear5 = (byte)args[24];
-                    byte chest = (byte)args[25];
-                    byte bracer = (byte)args[26];
-                    byte shoulder = (byte)args[27];
-                    byte face = (byte)args[28];
-                    byte lip = (byte)args[29];
-                    byte nose = (byte)args[30];
-                    byte eyes = (byte)args[31];
-                    byte hair = (byte)args[32];
+                    byte part1 = (byte)args[16];
+                    byte part2 = (byte)args[17];
+                    byte part3 = (byte)args[18];
+                    byte part4 = (byte)args[19];
+                    byte part5 = (byte)args[20];
+                    byte appear1 = (byte)args[21];
+                    byte appear2 = (byte)args[22];
+                    byte appear3 = (byte)args[23];
+                    byte appear4 = (byte)args[24];
+                    byte appear5 = (byte)args[25];
+                    byte chest = (byte)args[26];
+                    byte bracer = (byte)args[27];
+                    byte shoulder = (byte)args[28];
+                    byte face = (byte)args[29];
+                    byte lip = (byte)args[30];
+                    byte nose = (byte)args[31];
+                    byte eyes = (byte)args[32];
+                    byte hair = (byte)args[33];
 
-                    return createGen0Auction(strength, power, agile, speed,
+                    return createGen0Auction(strength, power, agile, speed, generation,
                         skill1, skill2, skill3, skill4, skill5, equip1, equip2, equip3, equip4,
                         restrictAttribute, character,
                         part1, part2, part3, part4, part5,
@@ -1039,12 +1061,16 @@ namespace AuctionContract
 
                 if (method == "drawToContractOwner")
                 {
-                    if (args.Length != 1) return 0;
-                    BigInteger count = (BigInteger)args[0];
+                    if (args.Length != 2) return 0;
+                    BigInteger flag = (BigInteger)args[0];
+                    BigInteger count = (BigInteger)args[1];
 
-                    return drawToContractOwner(count);
+                    return drawToContractOwner(flag,count);
                 }
-
+                if (method == "getAuctionAllFee")
+                {                  
+                    return getAuctionAllFee();
+                }
                 if (method == "rechargeToken")
                 {
                     if (args.Length != 2) return 0;
@@ -1284,7 +1310,7 @@ namespace AuctionContract
          */
         private static bool _putGenoPrice( GenoPrice info)
         {
-            //做一个最小值判断，防止设置设置过小
+            //做一个最小值判断，防止设置过小
             if (info.min_price<GEN0_MIN_PRICE)
             {
                 info.max_price = GEN0_MAX_PRICE;
