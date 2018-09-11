@@ -166,9 +166,10 @@ namespace NFTContract
         public static event deleGladiatorCloned GladiatorCloned;
 
         // 合约拥有者，超级管理员
-        public static readonly byte[] ContractOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
-        // 有权限发布0代角斗士的钱包地址
-        public static readonly byte[] MintOwner = "AUGkNMWzBCy5oi1rFKR5sPhpRjhhfgPhU2".ToScriptHash();
+        // the owner, super admin address  ARTVr4BMvv5AiGPiLRuAHpENhiYSE4ykGM
+        public static readonly byte[] ContractOwner = "ARTVr4BMvv5AiGPiLRuAHpENhiYSE4ykGM".ToScriptHash();
+        // 有权限发布0代角斗士的钱包地址   AbNsFEgwioorMbnf8UU21PoHq2HQZ8Q5qx
+        public static readonly byte[] MintOwner = "AbNsFEgwioorMbnf8UU21PoHq2HQZ8Q5qx".ToScriptHash();
 
         // 名称
         public static string Name() => "CrazyGladiator";
@@ -182,8 +183,111 @@ namespace NFTContract
         //发行总量
         private const ulong ALL_SUPPLY_CG = 4320;
         //版本
-        public static string Version() => "1.0.23";
+        public static string Version() => "1.2.6";
 
+        private static object[] getNFTCommander(byte[] sender,BigInteger tokenId)
+        {   
+            object[] commander;
+            object[] objCgInfo = _getNFTInfo(tokenId.AsByteArray());
+            if (objCgInfo.Length > 0)
+            {
+                NFTInfo cgInfo = (NFTInfo)(object)objCgInfo;
+                //判断是不是自己的角斗士
+                if (sender == cgInfo.owner)
+                {
+                    BigInteger proV = cgInfo.strength + cgInfo.speed + cgInfo.power + cgInfo.agile;
+                    BigInteger genSkV = 0;
+                    BigInteger advSkV = 0;
+                    BigInteger genEqV = 0;
+                    BigInteger advEqV = 0;
+                    if (cgInfo.skill1 > 0 && cgInfo.skill1 <= 200)
+                    {
+                        genSkV += 1;
+                    }
+                    if (cgInfo.skill2 > 0 && cgInfo.skill2 <= 200)
+                    {
+                        genSkV += 1;
+                    }
+                    if (cgInfo.skill3 > 0 && cgInfo.skill3 <= 200)
+                    {
+                        genSkV += 1;
+                    }
+                    if (cgInfo.skill4 > 0 && cgInfo.skill4 <= 200)
+                    {
+                        genSkV += 1;
+                    }
+                    if (cgInfo.skill5 > 0 && cgInfo.skill5 <= 200)
+                    {
+                        genSkV += 1;
+                    }
+                    //
+                    if (cgInfo.skill1 > 200 && cgInfo.skill1 <= 250)
+                    {
+                        advSkV += 1;
+                    }
+                    if (cgInfo.skill2 > 200 && cgInfo.skill2 <= 250)
+                    {
+                        advSkV += 1;
+                    }
+                    if (cgInfo.skill3 > 200 && cgInfo.skill3 <= 250)
+                    {
+                        advSkV += 1;
+                    }
+                    if (cgInfo.skill4 > 200 && cgInfo.skill4 <= 250)
+                    {
+                        advSkV += 1;
+                    }
+                    if (cgInfo.skill5 > 200 && cgInfo.skill5 <= 250)
+                    {
+                        advSkV += 1;
+                    }
+                    //
+                    if (cgInfo.equip1 > 0 && cgInfo.equip1 <= 200)
+                    {
+                        genEqV += 1;
+                    }
+                    if (cgInfo.equip2 > 0 && cgInfo.equip2 <= 200)
+                    {
+                        genEqV += 1;
+                    }
+                    if (cgInfo.equip3 > 0 && cgInfo.equip3 <= 200)
+                    {
+                        genEqV += 1;
+                    }
+                    if (cgInfo.equip4 > 0 && cgInfo.equip4 <= 200)
+                    {
+                        genEqV += 1;
+                    }
+                    //
+                    if (cgInfo.equip1 > 200 && cgInfo.equip1 <= 250)
+                    {
+                        advEqV += 1;
+                    }
+                    if (cgInfo.equip2 > 200 && cgInfo.equip2 <= 250)
+                    {
+                        advEqV += 1;
+                    }
+                    if (cgInfo.equip3 > 200 && cgInfo.equip3 <= 250)
+                    {
+                        advEqV += 1;
+                    }
+                    if (cgInfo.equip4 > 200 && cgInfo.equip4 <= 250)
+                    {
+                        advEqV += 1;
+                    }
+                    commander = new object[5] { proV, genSkV, advSkV, genEqV, advEqV };
+                }
+                else
+                {
+                    commander = new object[0];
+                }
+            }
+            else
+            {
+                commander = new object[0];
+            }
+            return commander;
+        }
         /**
          * 查询克隆申请是否执行成功
          */
@@ -258,14 +362,14 @@ namespace NFTContract
         /**
          * 发行促销角斗士
          */
-        public static BigInteger mintToken(byte[] tokenOwner, byte strength, byte power, byte agile, byte speed,
+        public static BigInteger mintToken(byte[] tokenOwner, byte strength, byte power, byte agile, byte speed, BigInteger generation,
             byte skill1, byte skill2, byte skill3, byte skill4, byte skill5, byte equip1, byte equip2, byte equip3, byte equip4,
             byte restrictAttribute, byte character,
             byte part1, byte part2, byte part3, byte part4, byte part5, byte appear5, byte appear6, byte appear7, byte appear8, byte appear9,
             byte chest, byte bracer, byte shoulder,
             byte face, byte lip, byte nose, byte eyes, byte hair)
         {
-            return createGladiator(tokenOwner, strength, power, agile, speed,
+            return createGladiator(tokenOwner, strength, power, agile, speed, generation,
                 skill1, skill2, skill3, skill4, skill5, equip1, equip2, equip3, equip4,
                 restrictAttribute, character,
                 part1, part2, part3, part4, part5, appear5, appear6, appear7, appear8, appear9,
@@ -276,7 +380,7 @@ namespace NFTContract
         /**
          * 生成新的角斗士数据，并记录
          */
-        private static BigInteger createGladiator(byte[] tokenOwner, byte strength, byte power, byte agile, byte speed,
+        private static BigInteger createGladiator(byte[] tokenOwner, byte strength, byte power, byte agile, byte speed, BigInteger generation,
             byte skill1, byte skill2, byte skill3, byte skill4, byte skill5, byte equip1, byte equip2, byte equip3, byte equip4,
             byte restrictAttribute, byte character,
             byte part1, byte part2, byte part3, byte part4, byte part5, byte appear1, byte appear2, byte appear3, byte appear4, byte appear5,
@@ -295,10 +399,11 @@ namespace NFTContract
                 //判断下是否超过总量
                 byte[] tokenaId = Storage.Get(Storage.CurrentContext, KEY_ALL);
                 byte[] tokenId = Storage.Get(Storage.CurrentContext, KEY_TOTAL);
+                /*byte[] tokenId = Storage.Get(Storage.CurrentContext, KEY_TOTAL);
                 if (tokenId.AsBigInteger()>= tokenaId.AsBigInteger())
                 {
                     return 0;
-                }
+                }*/
                 BigInteger newToken = tokenId.AsBigInteger() + 1;
                 tokenId = newToken.AsByteArray();
 
@@ -306,13 +411,13 @@ namespace NFTContract
                 newInfo.owner = tokenOwner;
                 newInfo.isGestating = 0;
                 newInfo.isReady = 0;
-                newInfo.cooldownIndex = 0;
                 newInfo.nextActionAt = 0;
                 newInfo.cloneWithId = 0;
                 newInfo.birthTime = Blockchain.GetHeader(Blockchain.GetHeight()).Timestamp;
                 newInfo.matronId = 0;
                 newInfo.sireId = 0;
-                newInfo.generation = 0;
+                newInfo.generation = generation;
+                newInfo.cooldownIndex = newInfo.generation;
 
                 newInfo.strength = strength;
                 newInfo.power = power;
@@ -547,7 +652,7 @@ namespace NFTContract
             if (skill1 >= attrConfig.rareSkillIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exSkillNum +=1;
 
@@ -560,7 +665,7 @@ namespace NFTContract
             if (skill1 >= attrConfig.rareSkillIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exSkillNum += 1;
 
@@ -573,7 +678,7 @@ namespace NFTContract
             if (skill1 >= attrConfig.rareSkillIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exSkillNum += 1;
 
@@ -586,7 +691,7 @@ namespace NFTContract
             if (skill1 >= attrConfig.rareSkillIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exSkillNum += 1;
 
@@ -599,7 +704,7 @@ namespace NFTContract
             if (skill1 >= attrConfig.rareSkillIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exSkillNum += 1;
 
@@ -613,7 +718,7 @@ namespace NFTContract
             if (equip1 >= attrConfig.rareEquipIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exEquipNum += 1;
 
@@ -626,7 +731,7 @@ namespace NFTContract
             if (equip1 >= attrConfig.rareEquipIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exEquipNum += 1;
 
@@ -639,7 +744,7 @@ namespace NFTContract
             if (equip1 >= attrConfig.rareEquipIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exEquipNum += 1;
 
@@ -652,7 +757,7 @@ namespace NFTContract
             if (equip1 >= attrConfig.rareEquipIdMin)
             {
                 rand = (randA * rand + randB) % randM;
-                if (rand % 10 < 8)
+                if (rand % 10 < 6)
                 {
                     exEquipNum += 1;
 
@@ -683,6 +788,50 @@ namespace NFTContract
             NFTInfo newInfo = new NFTInfo();
             return (object[])(object)newInfo;
             
+        }
+
+        private static BigInteger[] getFMSkillAndEqCount(BigInteger skCount, BigInteger eqCount,NFTInfo nftInfo)
+        {
+            BigInteger[] res = new BigInteger[2];
+            if (nftInfo.skill1 > 0)
+            {
+                skCount += 1;
+                if (nftInfo.skill2 > 0)
+                {
+                    skCount += 1;
+                    if (nftInfo.skill3 > 0)
+                    {
+                        skCount += 1;
+                        if (nftInfo.skill4 > 0)
+                        {
+                            skCount += 1;
+                            if (nftInfo.skill5 > 0)
+                            {
+                                skCount += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            if (nftInfo.equip1 > 0)
+            {
+                eqCount += 1;
+                if (nftInfo.equip2 > 0)
+                {
+                    eqCount += 1;
+                    if (nftInfo.equip3 > 0)
+                    {
+                        eqCount += 1;
+                        if (nftInfo.equip4 > 0)
+                        {
+                            eqCount += 1;
+                        }
+                    }
+                }
+            }
+            res[0] = skCount;
+            res[1] = eqCount;
+            return res;
         }
 
         /**
@@ -757,9 +906,34 @@ namespace NFTContract
         }
 
         /**
-         * 将角斗士资产转账给其他人
+         * 特殊情况后台刷新角斗士克隆状态
          */
-        public static bool transfer(byte[] from, byte[] to, BigInteger tokenId)
+        public static bool refreshNFT(BigInteger tokenId)
+        {
+            if (Runtime.CheckWitness(MintOwner))
+            {
+                object[] objInfo = _getNFTInfo(tokenId.AsByteArray());
+                if (objInfo.Length == 0)
+                {
+                    return false;
+                }
+
+                NFTInfo info = (NFTInfo)(object)objInfo;
+           
+                info.cloneWithId = 0;
+                info.nextActionAt = 0;
+                info.isGestating = 0;
+                _putNFTInfo(tokenId.AsByteArray(), info);
+                return true;
+            }
+            
+            return false;
+        }
+
+            /**
+             * 将角斗士资产转账给其他人
+             */
+            public static bool transfer(byte[] from, byte[] to, BigInteger tokenId)
         {
             if (from.Length != 20|| to.Length != 20)
             {
@@ -1082,7 +1256,15 @@ namespace NFTContract
                     }
                     return transfer(from, to, tokenId);
                 }
+                
+                if (operation == "refreshNFT")
+                {
+                    if (args.Length != 1)
+                        return false;
 
+                    BigInteger tokenId = (BigInteger)args[0];
+                    return refreshNFT(tokenId);
+                }
                 if (operation == "transferFrom_app")
                 {
                     if (args.Length != 3)
@@ -1120,7 +1302,30 @@ namespace NFTContract
 
                     return transfer(from, to, tokenId);
                 }
+                if (operation == "transfer_Syn")
+                {
+                    if (args.Length != 4)
+                        return false;
 
+                    byte[] from = (byte[])args[0];
+                    byte[] to = (byte[])args[1];
+                    BigInteger tokenId = (BigInteger)args[2];
+                    byte[] scHash = (byte[])args[3];
+
+                    //如果scHash不是 传入脚本 不让转
+                    if (scHash.AsBigInteger() != callscript.AsBigInteger())
+                        return false;
+
+                    return transfer(from, to, tokenId);
+                }
+                if (operation == "getNFTCommander")
+                {
+                    if (args.Length != 2)
+                        return false;
+                    byte[] sender = (byte[])args[0];
+                    BigInteger tokenId = (BigInteger)args[1];
+                    return getNFTCommander(sender,tokenId);
+                }
                 if (operation == "bidOnClone_app")
                 {
                     // 和别人的角斗士克隆
@@ -1147,38 +1352,40 @@ namespace NFTContract
                     byte power = (byte)args[2];
                     byte agile = (byte)args[3];
                     byte speed = (byte)args[4];
+                    BigInteger generation = (int)args[5];
 
-                    byte skill1 = (byte)args[5];
-                    byte skill2 = (byte)args[6];
-                    byte skill3 = (byte)args[7];
-                    byte skill4 = (byte)args[8];
-                    byte skill5 = (byte)args[9];
+                    byte skill1 = (byte)args[6];
+                    byte skill2 = (byte)args[7];
+                    byte skill3 = (byte)args[8];
+                    byte skill4 = (byte)args[9];
+                    byte skill5 = (byte)args[10];
 
-                    byte equip1 = (byte)args[10];
-                    byte equip2 = (byte)args[11];
-                    byte equip3 = (byte)args[12];
-                    byte equip4 = (byte)args[13];
+                    byte equip1 = (byte)args[11];
+                    byte equip2 = (byte)args[12];
+                    byte equip3 = (byte)args[13];
+                    byte equip4 = (byte)args[14];
 
-                    byte restrictAttribute = (byte)args[14];
-                    byte character = (byte)args[15];
-                    byte part1 = (byte)args[16];
-                    byte part2 = (byte)args[17];
-                    byte part3 = (byte)args[18];
-                    byte part4 = (byte)args[19];
-                    byte part5 = (byte)args[20];
-                    byte nudeC = (byte)args[21];
-                    byte shoes = (byte)args[22];
-                    byte knees = (byte)args[23];
-                    byte pants = (byte)args[24];
-                    byte belt = (byte)args[25];
-                    byte chest = (byte)args[26];
-                    byte bracer = (byte)args[27];
-                    byte shoulder = (byte)args[28];
-                    byte face = (byte)args[29];
-                    byte lip = (byte)args[30];
-                    byte nose = (byte)args[31];
-                    byte eyes = (byte)args[32];
-                    byte hair = (byte)args[33];
+                    byte restrictAttribute = (byte)args[15];
+                    byte character = (byte)args[16];
+                    byte part1 = (byte)args[17];
+                    byte part2 = (byte)args[18];
+                    byte part3 = (byte)args[19];
+                    byte part4 = (byte)args[20];
+                    byte part5 = (byte)args[21];
+                    byte nudeC = (byte)args[22];
+                    byte shoes = (byte)args[23];
+                    byte knees = (byte)args[24];
+                    byte pants = (byte)args[25];
+                    byte belt = (byte)args[26];
+                    byte chest = (byte)args[27];
+                    byte bracer = (byte)args[28];
+                    byte shoulder = (byte)args[29];
+                    byte face = (byte)args[30];
+                    byte lip = (byte)args[31];
+                    byte nose = (byte)args[32];
+                    byte eyes = (byte)args[33];
+                    byte hair = (byte)args[34];
+                    
 
                     byte[] auctionAddr = Storage.Get(Storage.CurrentContext, "auction");
                     if (callscript.AsBigInteger() != auctionAddr.AsBigInteger())
@@ -1186,7 +1393,7 @@ namespace NFTContract
                         return false;
                     }
 
-                    return createGladiator(tokenOwner, strength, power, agile, speed,
+                    return createGladiator(tokenOwner, strength, power, agile, speed, generation,
                                     skill1, skill2, skill3, skill4, skill5, equip1, equip2, equip3, equip4,
                                     restrictAttribute, character,
                                     part1, part2, part3, part4, part5,
@@ -1196,47 +1403,48 @@ namespace NFTContract
 
                 if (operation == "mintToken")
                 {
-                    if (args.Length != 34) return 0;
+                    if (args.Length != 35) return 0;
                     byte[] owner = (byte[])args[0];
                     byte strength = (byte)args[1];
                     byte power = (byte)args[2];
                     byte agile = (byte)args[3];
                     byte speed = (byte)args[4];
+                    BigInteger generation = (int)args[5];
 
-                    byte skill1 = (byte)args[5];
-                    byte skill2 = (byte)args[6];
-                    byte skill3 = (byte)args[7];
-                    byte skill4 = (byte)args[8];
-                    byte skill5 = (byte)args[9];
+                    byte skill1 = (byte)args[6];
+                    byte skill2 = (byte)args[7];
+                    byte skill3 = (byte)args[8];
+                    byte skill4 = (byte)args[9];
+                    byte skill5 = (byte)args[10];
 
-                    byte equip1 = (byte)args[10];
-                    byte equip2 = (byte)args[11];
-                    byte equip3 = (byte)args[12];
-                    byte equip4 = (byte)args[13];
+                    byte equip1 = (byte)args[11];
+                    byte equip2 = (byte)args[12];
+                    byte equip3 = (byte)args[13];
+                    byte equip4 = (byte)args[14];
 
-                    byte restrictAttribute = (byte)args[14];
-                    byte character = (byte)args[15];
+                    byte restrictAttribute = (byte)args[15];
+                    byte character = (byte)args[16];
 
-                    byte part1 = (byte)args[16];
-                    byte part2 = (byte)args[17];
-                    byte part3 = (byte)args[18];
-                    byte part4 = (byte)args[19];
-                    byte part5 = (byte)args[20];
-                    byte nudeC = (byte)args[21];
-                    byte shoes = (byte)args[22];
-                    byte knees = (byte)args[23];
-                    byte pants = (byte)args[24];
-                    byte belt = (byte)args[25];
-                    byte chest = (byte)args[26];
-                    byte bracer = (byte)args[27];
-                    byte shoulder = (byte)args[28];
-                    byte face = (byte)args[29];
-                    byte lip = (byte)args[30];
-                    byte nose = (byte)args[31];
-                    byte eyes = (byte)args[32];
-                    byte hair = (byte)args[33];
-
-                    return mintToken(owner, strength, power, agile, speed,
+                    byte part1 = (byte)args[17];
+                    byte part2 = (byte)args[18];
+                    byte part3 = (byte)args[19];
+                    byte part4 = (byte)args[20];
+                    byte part5 = (byte)args[21];
+                    byte nudeC = (byte)args[22];
+                    byte shoes = (byte)args[23];
+                    byte knees = (byte)args[24];
+                    byte pants = (byte)args[25];
+                    byte belt = (byte)args[26];
+                    byte chest = (byte)args[27];
+                    byte bracer = (byte)args[28];
+                    byte shoulder = (byte)args[29];
+                    byte face = (byte)args[30];
+                    byte lip = (byte)args[31];
+                    byte nose = (byte)args[32];
+                    byte eyes = (byte)args[33];
+                    byte hair = (byte)args[34];
+                    
+                    return mintToken(owner, strength, power, agile, speed, generation,
                         skill1, skill2, skill3, skill4, skill5, equip1, equip2, equip3, equip4,
                         restrictAttribute, character, part1, part2, part3, part4, part5,
                         nudeC, shoes, knees, pants, belt, chest, bracer, shoulder,
